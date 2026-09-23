@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>State Capital Quiz</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    background: linear-gradient(160deg, #7ec8ff 0%, #ffe56b 55%, #9be7a8 100%);
+    min-height: 100vh;
+    color: #1a3a5c;
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+  }
+  .card {
+    background: #fffef6;
+    width: 100%;
+    max-width: 640px;
+    border-radius: 28px;
+    padding: 22px 18px 26px;
+    box-shadow: 0 10px 0 #f0c14a, 0 16px 30px rgba(0,0,0,0.12);
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 2rem;
+    text-align: center;
+    color: #e85d4c;
+  }
+  .sub {
+    text-align: center;
+    font-size: 1.15rem;
+    margin: 0 0 14px;
+  }
+  .stats {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .pill {
+    background: #e8f4ff;
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 1.05rem;
+    font-weight: bold;
+  }
+  .bar-wrap {
+    background: #e6e6e6;
+    border-radius: 999px;
+    height: 18px;
+    overflow: hidden;
+    margin: 8px 0 16px;
+  }
+  .bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4ecb71, #2aa9e0);
+    transition: width 0.3s;
+  }
+  .q {
+    font-size: 1.55rem;
+    text-align: center;
+    margin: 8px 0 16px;
+    line-height: 1.3;
+  }
+  .choices {
+    display: grid;
+    gap: 12px;
+  }
+  button.choice, button.big {
+    font-size: 1.35rem;
+    padding: 16px 12px;
+    border: none;
+    border-radius: 18px;
+    background: #4aa3ff;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 5px 0 #2b78c9;
+  }
+  button.choice:hover, button.big:hover { filter: brightness(1.06); }
+  button.choice:active, button.big:active { transform: translateY(3px); box-shadow: 0 2px 0 #2b78c9; }
+  button.choice.good { background: #3cba6a; box-shadow: 0 5px 0 #22884a; }
+  button.choice.bad { background: #f0a04b; box-shadow: 0 5px 0 #c97a22; }
+  button.choice:disabled { cursor: default; }
+  .msg {
+    min-height: 2.4em;
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin: 14px 0 6px;
+  }
+  .end { text-align: center; }
+  .end h2 { font-size: 1.8rem; margin: 8px 0; color: #e85d4c; }
+  .end p { font-size: 1.25rem; }
+  button.big { width: 100%; margin-top: 8px; background: #f26b5b; box-shadow: 0 5px 0 #c44a3c; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>State Capital Quiz</h1>
+  <p class="sub">Pick the capital city. You get three tries!</p>
+  <div class="stats">
+    <div class="pill" id="scorePill">Score: 0</div>
+    <div class="pill" id="streakPill">Streak: 0</div>
+    <div class="pill" id="tryPill">Tries left: 3</div>
+    <div class="pill" id="qPill">Question 1 of 10</div>
+  </div>
+  <div class="bar-wrap"><div class="bar" id="bar"></div></div>
+  <div id="play">
+    <div class="q" id="question"></div>
+    <div class="choices" id="choices"></div>
+    <div class="msg" id="msg"></div>
+  </div>
+  <div id="done" class="end hidden">
+    <h2 id="endTitle">Nice work!</h2>
+    <p id="endText"></p>
+    <button class="big" id="again">Play again</button>
+  </div>
+</div>
+<script>
+var STATES = [
+  ["California", "Sacramento"],
+  ["Texas", "Austin"],
+  ["New York", "Albany"],
+  ["Florida", "Tallahassee"],
+  ["Ohio", "Columbus"],
+  ["Illinois", "Springfield"],
+  ["Georgia", "Atlanta"],
+  ["Colorado", "Denver"],
+  ["Washington", "Olympia"],
+  ["Arizona", "Phoenix"],
+  ["Michigan", "Lansing"],
+  ["Oregon", "Salem"],
+  ["Hawaii", "Honolulu"],
+  ["Alaska", "Juneau"],
+  ["Nevada", "Carson City"]
+];
+var round = [];
+var index = 0;
+var score = 0;
+var streak = 0;
+var tries = 3;
+var locked = false;
+
+function shuffle(list) {
+  var a = list.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+function start() {
+  round = shuffle(STATES).slice(0, 10);
+  index = 0;
+  score = 0;
+  streak = 0;
+  document.getElementById("play").classList.remove("hidden");
+  document.getElementById("done").classList.add("hidden");
+  show();
+}
+
+function show() {
+  locked = false;
+  tries = 3;
+  var item = round[index];
+  document.getElementById("question").textContent = "What is the capital of " + item[0] + "?";
+  document.getElementById("scorePill").textContent = "Score: " + score;
+  document.getElementById("streakPill").textContent = "Streak: " + streak;
+  document.getElementById("tryPill").textContent = "Tries left: 3";
+  document.getElementById("qPill").textContent = "Question " + (index + 1) + " of 10";
+  document.getElementById("bar").style.width = (index * 10) + "%";
+  document.getElementById("msg").textContent = "";
+  var wrong = shuffle(STATES.filter(function (s) { return s[1] !== item[1]; })).slice(0, 3);
+  var options = shuffle([item[1]].concat(wrong.map(function (s) { return s[1]; })));
+  var box = document.getElementById("choices");
+  box.innerHTML = "";
+  options.forEach(function (name) {
+    var b = document.createElement("button");
+    b.className = "choice";
+    b.textContent = name;
+    b.onclick = function () { pick(b, name, item[1]); };
+    box.appendChild(b);
+  });
+}
+
+function pick(btn, chosen, answer) {
+  if (locked || btn.disabled) return;
+  var msg = document.getElementById("msg");
+  if (chosen === answer) {
+    locked = true;
+    score += 1;
+    streak += 1;
+    btn.classList.add("good");
+    document.querySelectorAll(".choice").forEach(function (b) { b.disabled = true; });
+    var cheers = ["Yes! Great job!", "You got it!", "Super star!", "That is right!"];
+    msg.textContent = cheers[Math.floor(Math.random() * cheers.length)];
+    document.getElementById("scorePill").textContent = "Score: " + score;
+    document.getElementById("streakPill").textContent = "Streak: " + streak;
+    setTimeout(next, 1100);
+    return;
+  }
+  tries -= 1;
+  btn.disabled = true;
+  btn.classList.add("bad");
+  document.getElementById("tryPill").textContent = "Tries left: " + tries;
+  if (tries > 0) {
+    msg.textContent = "Not quite - try again!";
+    return;
+  }
+  locked = true;
+  streak = 0;
+  document.getElementById("streakPill").textContent = "Streak: 0";
+  document.querySelectorAll(".choice").forEach(function (b) {
+    b.disabled = true;
+    if (b.textContent === answer) b.classList.add("good");
+  });
+  msg.textContent = "Not quite - the capital is " + answer + ". You will get the next one!";
+  setTimeout(next, 1400);
+}
+
+function next() {
+  index += 1;
+  if (index >= 10) finish();
+  else show();
+}
+
+function finish() {
+  document.getElementById("bar").style.width = "100%";
+  document.getElementById("play").classList.add("hidden");
+  document.getElementById("done").classList.remove("hidden");
+  var title = "Nice work!";
+  if (score === 10) title = "Perfect round!";
+  else if (score >= 7) title = "Awesome job!";
+  document.getElementById("endTitle").textContent = title;
+  document.getElementById("endText").textContent =
+    "You knew " + score + " out of 10 capitals. Want another round?";
+}
+
+document.getElementById("again").onclick = start;
+start();
+</script>
+</body>
+</html>
