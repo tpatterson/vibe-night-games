@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tell the Time</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: linear-gradient(160deg, #fff4c8, #c8f0ff 55%, #e4d4ff);
+    min-height: 100vh;
+    color: #24324a;
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+  }
+  .wrap { width: min(560px, 100%); }
+  h1 { margin: 8px 0 4px; font-size: 2rem; text-align: center; }
+  .sub { text-align: center; font-size: 1.15rem; margin: 0 0 10px; }
+  .bar-row { display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; }
+  .track { height: 18px; background: #fff; border-radius: 999px; overflow: hidden; border: 3px solid #5b6cff; }
+  .fill { height: 100%; width: 0%; background: #3dcf7a; transition: width 0.3s; }
+  .card {
+    background: #fffef8;
+    border-radius: 24px;
+    padding: 16px;
+    margin-top: 14px;
+    box-shadow: 0 8px 0 #f0c14a;
+  }
+  .ask { text-align: center; font-size: 1.45rem; font-weight: 800; margin: 4px 0 8px; }
+  .clock-box { display: flex; justify-content: center; margin: 8px 0 14px; }
+  canvas { background: #fff; border-radius: 50%; box-shadow: 0 0 0 8px #5b6cff, 0 10px 0 #3a46c4; }
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  button.choice {
+    font-size: 1.45rem;
+    font-weight: 800;
+    padding: 18px 8px;
+    border: none;
+    border-radius: 18px;
+    background: #7ad7ff;
+    color: #16324a;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #2aa3d6;
+  }
+  button.choice:hover { filter: brightness(1.05); }
+  button.choice:active { transform: translateY(3px); box-shadow: 0 3px 0 #2aa3d6; }
+  button.choice:disabled { cursor: default; filter: none; }
+  .msg {
+    min-height: 2.4rem;
+    text-align: center;
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin: 12px 0 0;
+  }
+  .good { color: #128a45; }
+  .try { color: #d07a00; }
+  .done { text-align: center; }
+  .done h2 { font-size: 1.8rem; margin: 8px 0; }
+  .big {
+    font-size: 1.3rem;
+    font-weight: 800;
+    padding: 16px 22px;
+    border: none;
+    border-radius: 16px;
+    background: #ffb347;
+    box-shadow: 0 6px 0 #e08920;
+    cursor: pointer;
+  }
+  .stars { font-size: 2rem; letter-spacing: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⏰ Tell the Time</h1>
+  <p class="sub">Look at the clock. Tap the matching time!</p>
+  <div class="bar-row">
+    <span id="score">Score: 0</span>
+    <span id="qnum">Question 1 of 10</span>
+  </div>
+  <div class="track"><div class="fill" id="fill"></div></div>
+  <div class="card" id="play">
+    <div class="ask">What time is it?</div>
+    <div class="clock-box"><canvas id="clock" width="240" height="240"></canvas></div>
+    <div class="choices" id="choices"></div>
+    <div class="msg" id="msg"></div>
+  </div>
+  <div class="card done" id="end" hidden>
+    <div class="stars" id="stars"></div>
+    <h2 id="endTitle">You did it!</h2>
+    <p id="endText" style="font-size:1.25rem"></p>
+    <button class="big" id="again">Play again</button>
+  </div>
+</div>
+<script>
+const TOTAL = 10;
+const canvas = document.getElementById("clock");
+const ctx = canvas.getContext("2d");
+let score = 0, q = 0, streak = 0, locked = false, answer = "";
+
+function label(h, m) {
+  const names = ["twelve","one","two","three","four","five","six","seven","eight","nine","ten","eleven"];
+  const hh = ((h % 12) + 12) % 12;
+  if (m === 0) return names[hh] + " o'clock";
+  if (m === 30) return "half past " + names[hh];
+  return "";
+}
+
+function drawClock(h, m) {
+  const w = canvas.width, c = w / 2;
+  ctx.clearRect(0, 0, w, w);
+  ctx.beginPath();
+  ctx.arc(c, c, c - 6, 0, Math.PI * 2);
+  ctx.fillStyle = "#fffdf6";
+  ctx.fill();
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "#24324a";
+  ctx.stroke();
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    const inner = i % 3 === 0 ? c - 28 : c - 18;
+    ctx.beginPath();
+    ctx.moveTo(c + Math.cos(a) * inner, c + Math.sin(a) * inner);
+    ctx.lineTo(c + Math.cos(a) * (c - 12), c + Math.sin(a) * (c - 12));
+    ctx.lineWidth = i % 3 === 0 ? 5 : 3;
+    ctx.strokeStyle = "#24324a";
+    ctx.stroke();
+  }
+  const nums = ["12","1","2","3","4","5","6","7","8","9","10","11"];
+  ctx.font = "bold 18px Segoe UI, sans-serif";
+  ctx.fillStyle = "#24324a";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    ctx.fillText(nums[i], c + Math.cos(a) * (c - 42), c + Math.sin(a) * (c - 42));
+  }
+  const hourAngle = ((h % 12) + m / 60) / 12 * Math.PI * 2 - Math.PI / 2;
+  const minAngle = (m / 60) * Math.PI * 2 - Math.PI / 2;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(c, c);
+  ctx.lineTo(c + Math.cos(hourAngle) * 52, c + Math.sin(hourAngle) * 52);
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = "#5b6cff";
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(c, c);
+  ctx.lineTo(c + Math.cos(minAngle) * 78, c + Math.sin(minAngle) * 78);
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = "#ff7a59";
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(c, c, 7, 0, Math.PI * 2);
+  ctx.fillStyle = "#24324a";
+  ctx.fill();
+}
+
+function makeTimes() {
+  const list = [];
+  for (let h = 1; h <= 12; h++) {
+    list.push({ h, m: 0 });
+    list.push({ h, m: 30 });
+  }
+  return list;
+}
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function nextQuestion() {
+  locked = false;
+  document.getElementById("msg").textContent = "";
+  document.getElementById("msg").className = "msg";
+  document.getElementById("qnum").textContent = "Question " + (q + 1) + " of " + TOTAL;
+  document.getElementById("fill").style.width = (q / TOTAL * 100) + "%";
+  const pool = makeTimes();
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  answer = label(pick.h, pick.m);
+  drawClock(pick.h, pick.m);
+  const wrongs = shuffle(pool.filter(t => label(t.h, t.m) !== answer)).slice(0, 3);
+  const opts = shuffle([answer, ...wrongs.map(t => label(t.h, t.m))]);
+  const box = document.getElementById("choices");
+  box.innerHTML = "";
+  opts.forEach(text => {
+    const b = document.createElement("button");
+    b.className = "choice";
+    b.textContent = text;
+    b.onclick = () => choose(text, b);
+    box.appendChild(b);
+  });
+}
+
+function choose(text, btn) {
+  if (locked) return;
+  locked = true;
+  const msg = document.getElementById("msg");
+  const buttons = document.querySelectorAll(".choice");
+  if (text === answer) {
+    score++;
+    streak++;
+    document.getElementById("score").textContent = "Score: " + score;
+    msg.textContent = streak > 1 ? "Yes! " + streak + " in a row! 🌟" : "Yes! Great job! 🌟";
+    msg.className = "msg good";
+    btn.style.background = "#8ef0b0";
+    setTimeout(advance, 900);
+  } else {
+    streak = 0;
+    msg.textContent = "Not quite - try again!";
+    msg.className = "msg try";
+    btn.style.background = "#ffd59a";
+    btn.disabled = true;
+    locked = false;
+    buttons.forEach(b => { if (b.textContent === answer) b.style.background = "#c8f7ff"; });
+  }
+}
+
+function advance() {
+  q++;
+  if (q >= TOTAL) finish();
+  else nextQuestion();
+}
+
+function finish() {
+  document.getElementById("fill").style.width = "100%";
+  document.getElementById("play").hidden = true;
+  document.getElementById("end").hidden = false;
+  const stars = score >= 9 ? "🌟🌟🌟" : score >= 6 ? "🌟🌟" : "🌟";
+  document.getElementById("stars").textContent = stars;
+  document.getElementById("endTitle").textContent = score >= 7 ? "Super clock reader!" : "Nice practice!";
+  document.getElementById("endText").textContent = "You got " + score + " out of " + TOTAL + ". Want another round?";
+}
+
+document.getElementById("again").onclick = () => {
+  score = 0; q = 0; streak = 0;
+  document.getElementById("score").textContent = "Score: 0";
+  document.getElementById("play").hidden = false;
+  document.getElementById("end").hidden = true;
+  nextQuestion();
+};
+
+nextQuestion();
+</script>
+</body>
+</html>
