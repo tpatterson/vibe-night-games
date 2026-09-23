@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wave Jet Ski</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Trebuchet MS", sans-serif;
+    background: linear-gradient(#ffb15a, #e25a3a 40%, #1a6fb5);
+    color: #123;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 12px;
+  }
+  h1 { margin: 6px 0; font-size: 2rem; color: #fff; text-shadow: 0 2px 0 #a33; }
+  p.hint { margin: 0 0 8px; color: #fff8ee; font-size: 1.1rem; text-align: center; }
+  #wrap { width: min(920px, 100%); }
+  canvas {
+    width: 100%; height: auto; background: #0a4a86;
+    border-radius: 16px; display: block; touch-action: none;
+    box-shadow: 0 8px 0 #083a68;
+  }
+  .bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; justify-content: center; }
+  button {
+    font-size: 1.3rem; padding: 14px 22px; border: none; border-radius: 14px;
+    background: #ffd24a; color: #333; font-weight: bold; cursor: pointer;
+    box-shadow: 0 4px 0 #c99212;
+  }
+  button.boost { background: #ff7ad1; box-shadow: 0 4px 0 #c43a9a; color: #fff; }
+  button:active { transform: translateY(2px); box-shadow: 0 2px 0 #c99212; }
+  button.boost:active { box-shadow: 0 2px 0 #c43a9a; }
+  #msg { min-height: 1.6em; font-size: 1.3rem; font-weight: bold; color: #fff; text-align: center; margin: 8px 0; }
+  .stats { display: flex; gap: 16px; justify-content: center; color: #fff; font-size: 1.2rem; flex-wrap: wrap; }
+  .track { width: min(920px, 100%); height: 18px; background: #fff6; border-radius: 9px; margin-top: 8px; overflow: hidden; }
+  .fill { height: 100%; width: 0%; background: #7dff9a; }
+</style>
+</head>
+<body>
+<h1>Wave Jet Ski</h1>
+<p class="hint">Ride the ocean! Hold GO to zoom. Tap BOOST for a super push.</p>
+<div class="stats">
+  <span>Score: <b id="score">0</b></span>
+  <span>Streak: <b id="streak">0</b></span>
+  <span>Lap: <b id="lap">1</b> / 5</span>
+</div>
+<div class="track"><div class="fill" id="fill"></div></div>
+<p id="msg">Catch a crest and smile!</p>
+<div id="wrap"><canvas id="c" width="900" height="480"></canvas></div>
+<div class="bar">
+  <button id="go">GO</button>
+  <button id="boost" class="boost">BOOST</button>
+  <button id="left">LEFT</button>
+  <button id="right">RIGHT</button>
+</div>
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+const scoreEl = document.getElementById("score");
+const streakEl = document.getElementById("streak");
+const lapEl = document.getElementById("lap");
+const fillEl = document.getElementById("fill");
+const msgEl = document.getElementById("msg");
+
+let keys = { go: false, left: false, right: false, boost: false };
+let t = 0, score = 0, streak = 0, lap = 1, dist = 0, boostJuice = 1;
+let ski = { x: 450, vx: 0, roll: 0, engine: 0, splash: 0, air: 0, boost: 0 };
+let cheers = ["Nice glide!", "You caught the wave!", "Super splash!", "Wow, smooth ride!", "Boost blast!"];
+const clouds = [
+  { x: 80, y: 50, w: 70, s: 18 },
+  { x: 240, y: 78, w: 90, s: 12 },
+  { x: 420, y: 42, w: 64, s: 22 },
+  { x: 610, y: 70, w: 100, s: 14 },
+  { x: 780, y: 48, w: 76, s: 16 }
+];
+
+function waveY(x, time) {
+  const a = 38 * Math.sin(x * 0.012 + time * 1.4);
+  const b = 22 * Math.sin(x * 0.028 - time * 0.9);
+  const c = 10 * Math.sin(x * 0.05 + time * 2.1);
+  return 250 + a + b + c;
+}
+function slope(x, time) {
+  const dx = 4;
+  return (waveY(x + dx, time) - waveY(x - dx, time)) / (2 * dx);
+}
+
+function say(text) { msgEl.textContent = text; }
+
+function hold(id, key) {
+  const el = document.getElementById(id);
+  el.addEventListener("pointerdown", e => { e.preventDefault(); keys[key] = true; });
+}
+hold("go", "go");
+hold("left", "left");
+hold("right", "right");
+hold("boost", "boost");
+window.addEventListener("pointerup", () => { keys.go = keys.left = keys.right = keys.boost = false; });
+window.addEventListener("keydown", e => {
+  if (e.key === "ArrowUp" || e.key === " ") keys.go = true;
+  if (e.key === "ArrowLeft") keys.left = true;
+  if (e.key === "ArrowRight") keys.right = true;
+  if (e.key === "b" || e.key === "B") keys.boost = true;
+});
+window.addEventListener("keyup", e => {
+  if (e.key === "ArrowUp" || e.key === " ") keys.go = false;
+  if (e.key === "ArrowLeft") keys.left = false;
+  if (e.key === "ArrowRight") keys.right = false;
+  if (e.key === "b" || e.key === "B") keys.boost = false;
+});
+
+function tick() {
+  t += 0.016;
+  const targetEngine = keys.go ? 1 : 0;
+  ski.engine += (targetEngine - ski.engine) * 0.08;
+  if (keys.boost && boostJuice > 0.05) {
+    ski.boost = Math.min(1, ski.boost + 0.12);
+    boostJuice = Math.max(0, boostJuice - 0.012);
+  } else {
+    ski.boost *= 0.9;
+    boostJuice = Math.min(1, boostJuice + 0.004);
+  }
+  const push = keys.left ? -1 : keys.right ? 1 : 0;
+  const s = slope(ski.x, t);
+  const waterPush = -s * 90;
+  ski.vx += push * (1.2 + ski.engine * 2.2) + waterPush * 0.02 + ski.boost * 0.55;
+  ski.vx *= keys.go ? 0.985 : 0.992;
+  ski.vx = Math.max(-9, Math.min(9, ski.vx));
+  ski.x += ski.vx + ski.engine * 1.6 + ski.boost * 4.2;
+  if (ski.x < 70) ski.x = 70;
+  if (ski.x > 830) ski.x = 830;
+
+  const y = waveY(ski.x, t);
+  const wantRoll = Math.max(-0.7, Math.min(0.7, -s * 8 + ski.vx * 0.04));
+  ski.roll += (wantRoll - ski.roll) * 0.12;
+
+  const onCrest = Math.abs(s) < 0.08 && y < 240;
+  const gliding = !keys.go && Math.abs(ski.vx) > 1.2 && onCrest;
+  if (ski.boost > 0.4) {
+    score += 2;
+    streak += 1;
+    ski.splash = 1;
+    ski.air = Math.min(1, ski.air + 0.08);
+    if (streak % 15 === 0) say("Zoom! Super boost!");
+  } else if (gliding) {
+    score += 1;
+    streak += 1;
+    ski.splash = 0.4;
+    if (streak % 20 === 0) say(cheers[streak % cheers.length]);
+  } else if (keys.go && Math.abs(s) > 0.18) {
+    ski.air = Math.min(1, ski.air + 0.04);
+    ski.splash = 1;
+    score += 1;
+  } else {
+    if (streak > 8) say("Not quite - try again!");
+    streak = Math.max(0, streak - 1);
+    ski.air *= 0.92;
+    ski.splash *= 0.9;
+  }
+
+  dist += 0.4 + ski.engine * 0.8 + ski.boost * 1.4 + Math.abs(ski.vx) * 0.05;
+  if (dist > 220) {
+    dist = 0;
+    lap = Math.min(5, lap + 1);
+    say(lap >= 5 ? "You finished the ocean ride!" : "Cheerful lap! Keep riding!");
+  }
+  scoreEl.textContent = score;
+  streakEl.textContent = streak;
+  lapEl.textContent = Math.min(lap, 5);
+  fillEl.style.width = ((lap - 1) / 5 * 100 + dist / 220 * 20) + "%";
+  draw(y);
+  requestAnimationFrame(tick);
+}
+
+function puff(x, y, w) {
+  ctx.beginPath();
+  ctx.ellipse(x, y, w * 0.55, w * 0.28, 0, 0, 7);
+  ctx.ellipse(x - w * 0.32, y + 6, w * 0.36, w * 0.22, 0, 0, 7);
+  ctx.ellipse(x + w * 0.34, y + 8, w * 0.4, w * 0.24, 0, 0, 7);
+  ctx.fill();
+}
+
+function draw(y) {
+  ctx.clearRect(0, 0, 900, 480);
+  const sky = ctx.createLinearGradient(0, 0, 0, 280);
+  sky.addColorStop(0, "#ff7a3c");
+  sky.addColorStop(0.45, "#ffb15a");
+  sky.addColorStop(1, "#ffd9a0");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 900, 480);
+  ctx.fillStyle = "#ffe08a";
+  ctx.beginPath();
+  ctx.arc(140, 78, 32, 0, 7);
+  ctx.fill();
+
+  for (let i = 0; i < clouds.length; i++) {
+    const c = clouds[i];
+    const x = ((c.x + t * c.s) % 1040) - 70;
+    ctx.fillStyle = i % 2 ? "rgba(255,236,210,0.92)" : "rgba(255,214,170,0.85)";
+    puff(x, c.y, c.w);
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(0, 480);
+  for (let x = 0; x <= 900; x += 8) ctx.lineTo(x, waveY(x, t));
+  ctx.lineTo(900, 480);
+  ctx.closePath();
+  const sea = ctx.createLinearGradient(0, 180, 0, 480);
+  sea.addColorStop(0, "#ff9a62");
+  sea.addColorStop(0.35, "#3ec6ff");
+  sea.addColorStop(1, "#0b4f93");
+  ctx.fillStyle = sea;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,240,210,0.85)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let x = 0; x <= 900; x += 8) {
+    const yy = waveY(x, t);
+    if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+  }
+  ctx.stroke();
+
+  const lift = ski.air * 28 + ski.boost * 10;
+  ctx.save();
+  ctx.translate(ski.x, y - 18 - lift);
+  ctx.rotate(ski.roll);
+  if (ski.boost > 0.15) {
+    ctx.fillStyle = "rgba(255,122,209,0.85)";
+    ctx.beginPath();
+    ctx.ellipse(-42, 10, 18 + ski.boost * 16, 6, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#fff6a8";
+    ctx.beginPath();
+    ctx.ellipse(-28, 8, 8, 4, 0, 0, 7);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#1f9e32";
+  ctx.beginPath();
+  ctx.ellipse(0, 8, 38, 14, 0, 0, 7);
+  ctx.fill();
+  ctx.fillStyle = "#39e05a";
+  ctx.beginPath();
+  ctx.ellipse(4, 6, 30, 9, 0, 0, 7);
+  ctx.fill();
+  ctx.fillStyle = "#0d5c1c";
+  ctx.beginPath();
+  ctx.ellipse(0, 12, 30, 6, 0, 0, 7);
+  ctx.fill();
+  ctx.fillStyle = "#7dff9a";
+  ctx.beginPath();
+  ctx.moveTo(28, 4);
+  ctx.lineTo(42, 8);
+  ctx.lineTo(28, 14);
+  ctx.fill();
+  ctx.fillStyle = "#145c22";
+  ctx.fillRect(-8, -10, 22, 14);
+  ctx.fillStyle = "#333";
+  ctx.beginPath();
+  ctx.arc(6, -2, 6, 0, 7);
+  ctx.fill();
+  ctx.fillStyle = "#b6ffc4";
+  ctx.fillRect(-30, 4, 10, 4);
+  if (ski.engine > 0.2) {
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.fillRect(-48, 8, 16 * ski.engine, 5);
+  }
+  ctx.restore();
+
+  if (ski.splash > 0.2) {
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath();
+      ctx.arc(ski.x - 20 + i * 8, y + 6 + Math.sin(t * 12 + i) * 6, 3 + ski.splash * 3, 0, 7);
+      ctx.fill();
+    }
+  }
+  ctx.fillStyle = "#fff";
+  ctx.font = "20px Trebuchet MS";
+  ctx.fillText(ski.boost > 0.2 ? "Boosting!" : keys.go ? "Engine on" : "Gliding", 20, 36);
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fillRect(20, 48, 120, 12);
+  ctx.fillStyle = "#ff7ad1";
+  ctx.fillRect(20, 48, 120 * boostJuice, 12);
+}
+tick();
+</script>
+</body>
+</html>
