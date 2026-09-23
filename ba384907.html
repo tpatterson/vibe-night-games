@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Times Table Stars</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    background: linear-gradient(160deg, #ffe8a3, #b8f0d8 45%, #c9e4ff);
+    min-height: 100vh;
+    color: #243047;
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+  }
+  .card {
+    width: 100%;
+    max-width: 560px;
+    background: #fffdf6;
+    border-radius: 28px;
+    padding: 22px 18px 26px;
+    box-shadow: 0 12px 0 #f0c36a;
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 2rem;
+    text-align: center;
+  }
+  .sub {
+    text-align: center;
+    font-size: 1.15rem;
+    margin: 0 0 14px;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    flex-wrap: wrap;
+  }
+  .bar {
+    height: 18px;
+    background: #efe6d2;
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #5ad07a, #2ea85a);
+    transition: width 0.3s;
+  }
+  .question {
+    text-align: center;
+    font-size: 4.4rem;
+    font-weight: 800;
+    margin: 8px 0 16px;
+    letter-spacing: 1px;
+    line-height: 1.1;
+  }
+  .choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  button {
+    font: inherit;
+    font-size: 2.6rem;
+    font-weight: 800;
+    border: none;
+    border-radius: 18px;
+    padding: 22px 8px;
+    background: #6aa8ff;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #3d78d0;
+  }
+  button:active { transform: translateY(3px); box-shadow: 0 3px 0 #3d78d0; }
+  button:disabled { cursor: default; opacity: 0.85; }
+  .msg {
+    min-height: 2.4em;
+    text-align: center;
+    font-size: 1.45rem;
+    font-weight: 800;
+    margin: 16px 0 8px;
+  }
+  .good { color: #1f8a45; }
+  .try { color: #d07a12; }
+  .again {
+    display: none;
+    width: 100%;
+    background: #ff8a5b;
+    box-shadow: 0 6px 0 #d45a2e;
+    margin-top: 8px;
+    font-size: 1.6rem;
+  }
+  .stars { text-align: center; font-size: 1.8rem; letter-spacing: 4px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Times Table Stars</h1>
+    <p class="sub">2, 3, 4, and 5 times tables</p>
+    <div class="row">
+      <span id="score">Score: 0</span>
+      <span id="best">High score: 0</span>
+      <span id="qnum">Question 1 of 10</span>
+    </div>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="stars" id="stars">⭐</div>
+    <div class="question" id="question">2 × 3</div>
+    <div class="choices" id="choices"></div>
+    <div class="msg" id="msg">Pick the right answer!</div>
+    <button class="again" id="again">Play again</button>
+  </div>
+<script>
+const tables = [2, 3, 4, 5];
+const total = 10;
+let score = 0;
+let high = 0;
+let asked = 0;
+let streak = 0;
+let locked = false;
+let current = null;
+
+function rand(n) { return Math.floor(Math.random() * n); }
+
+function makeQuestion() {
+  const a = tables[rand(tables.length)];
+  const b = 1 + rand(10);
+  const answer = a * b;
+  const opts = new Set([answer]);
+  while (opts.size < 4) {
+    const wrong = answer + (rand(9) - 4) * (rand(2) ? 1 : a);
+    if (wrong > 0 && wrong !== answer && wrong < 80) opts.add(wrong);
+    if (opts.size < 4) opts.add(1 + rand(50));
+  }
+  const list = [...opts].sort(() => Math.random() - 0.5);
+  return { a, b, answer, list };
+}
+
+function showScores() {
+  document.getElementById("score").textContent = "Score: " + score;
+  document.getElementById("best").textContent = "High score: " + high;
+}
+
+function render() {
+  current = makeQuestion();
+  locked = false;
+  document.getElementById("question").textContent = current.a + " × " + current.b;
+  document.getElementById("qnum").textContent = "Question " + (asked + 1) + " of " + total;
+  showScores();
+  document.getElementById("fill").style.width = (asked / total * 100) + "%";
+  document.getElementById("msg").textContent = "Pick the right answer!";
+  document.getElementById("msg").className = "msg";
+  const box = document.getElementById("choices");
+  box.innerHTML = "";
+  current.list.forEach(function (n) {
+    const btn = document.createElement("button");
+    btn.textContent = n;
+    btn.onclick = function () { choose(n, btn); };
+    box.appendChild(btn);
+  });
+}
+
+function choose(n, btn) {
+  if (locked) return;
+  locked = true;
+  const msg = document.getElementById("msg");
+  if (n === current.answer) {
+    score += 1;
+    streak += 1;
+    asked += 1;
+    msg.textContent = streak > 1 ? "Yes! Streak of " + streak + "! 🌟" : "Yes! Great job! 🌟";
+    msg.className = "msg good";
+    btn.style.background = "#3cbe62";
+    document.getElementById("stars").textContent = "⭐".repeat(Math.min(streak, 5));
+    setTimeout(next, 700);
+  } else {
+    streak = 0;
+    document.getElementById("stars").textContent = "⭐";
+    msg.textContent = "Not quite - try again!";
+    msg.className = "msg try";
+    btn.style.background = "#f0a24a";
+    locked = false;
+  }
+  showScores();
+}
+
+function next() {
+  if (asked >= total) {
+    finish();
+    return;
+  }
+  render();
+}
+
+function finish() {
+  const beat = score > high;
+  if (beat) high = score;
+  document.getElementById("fill").style.width = "100%";
+  document.getElementById("qnum").textContent = "All done!";
+  document.getElementById("question").textContent = score + " / " + total;
+  document.getElementById("choices").innerHTML = "";
+  showScores();
+  const msg = document.getElementById("msg");
+  msg.className = "msg good";
+  if (beat) {
+    msg.textContent = "New high score! Super star!";
+  } else if (score >= 8) {
+    msg.textContent = "Super star! You know your tables!";
+  } else {
+    msg.textContent = "Nice try! Play again and shine!";
+  }
+  document.getElementById("again").style.display = "block";
+}
+
+document.getElementById("again").onclick = function () {
+  score = 0;
+  asked = 0;
+  streak = 0;
+  document.getElementById("again").style.display = "none";
+  document.getElementById("stars").textContent = "⭐";
+  render();
+};
+
+render();
+</script>
+</body>
+</html>
