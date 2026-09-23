@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Animal Spelling Fun</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    background: linear-gradient(160deg, #fff6d8, #d8f3ff 50%, #ffe0f0);
+    color: #2a3350;
+    min-height: 100vh;
+  }
+  .wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 16px 14px 32px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 2rem;
+    margin: 8px 0 4px;
+    color: #e85d8c;
+  }
+  .sub {
+    text-align: center;
+    font-size: 1.1rem;
+    margin: 0 0 12px;
+  }
+  .bar-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .pill {
+    background: #fff;
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 1.15rem;
+    font-weight: bold;
+    box-shadow: 0 2px 0 #e0c8a0;
+  }
+  .card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 18px 16px 22px;
+    box-shadow: 0 8px 0 #c9e4f5;
+    text-align: center;
+  }
+  .emoji {
+    font-size: 5.5rem;
+    line-height: 1.1;
+    margin: 4px 0;
+  }
+  .ask {
+    font-size: 1.35rem;
+    margin: 6px 0 10px;
+  }
+  .slots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    min-height: 58px;
+    margin: 8px 0 14px;
+    flex-wrap: wrap;
+  }
+  .slot {
+    width: 42px;
+    height: 50px;
+    border-radius: 12px;
+    border: 3px dashed #9ec4e0;
+    background: #f4fbff;
+    font-size: 1.45rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+  }
+  .slot.filled {
+    border-style: solid;
+    border-color: #6bb3e0;
+    background: #fff;
+    cursor: pointer;
+  }
+  .letters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin: 8px 0 14px;
+  }
+  button.letter, button.big {
+    font-family: inherit;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  button.letter {
+    width: 52px;
+    height: 52px;
+    font-size: 1.4rem;
+    border-radius: 16px;
+    background: #ffe566;
+    box-shadow: 0 4px 0 #e0b800;
+    text-transform: uppercase;
+  }
+  button.letter:active { transform: translateY(2px); box-shadow: 0 2px 0 #e0b800; }
+  button.letter:disabled { opacity: 0.35; cursor: default; }
+  .msg {
+    min-height: 2.2em;
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin: 4px 0 10px;
+  }
+  .msg.good { color: #1a9a4a; }
+  .msg.try { color: #d97800; }
+  button.big {
+    font-size: 1.25rem;
+    padding: 14px 22px;
+    border-radius: 16px;
+    background: #7ad37a;
+    box-shadow: 0 4px 0 #4eae4e;
+    margin: 6px;
+  }
+  button.big.alt {
+    background: #9fd4ff;
+    box-shadow: 0 4px 0 #5aa8e0;
+  }
+  button.big:active { transform: translateY(2px); }
+  .progress {
+    height: 16px;
+    background: #e8eef5;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 14px;
+  }
+  .progress > div {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ffb347, #ff7eb3);
+    border-radius: 999px;
+  }
+  .end h2 { font-size: 1.8rem; margin: 8px 0; color: #e85d8c; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Animal Spelling Fun</h1>
+  <p class="sub">Tap the letters to spell the animal!</p>
+  <div class="bar-row">
+    <div class="pill">Score: <span id="score">0</span></div>
+    <div class="pill">Streak: <span id="streak">0</span></div>
+    <div class="pill">Word <span id="num">1</span> / 10</div>
+  </div>
+  <div class="card" id="play">
+    <div class="emoji" id="emoji">🐘</div>
+    <p class="ask">Spell this animal</p>
+    <div class="slots" id="slots"></div>
+    <div class="letters" id="letters"></div>
+    <div class="msg" id="msg"></div>
+    <button class="big" id="check">Check spelling</button>
+    <button class="big alt hidden" id="next">Next animal</button>
+    <div class="progress"><div id="bar"></div></div>
+  </div>
+  <div class="card end hidden" id="end">
+    <div class="emoji">🌟</div>
+    <h2>You did it!</h2>
+    <p class="ask" id="endmsg"></p>
+    <button class="big" id="again">Play again</button>
+  </div>
+</div>
+<script>
+var animals = [
+  { word: "elephant", emoji: "🐘" },
+  { word: "giraffe", emoji: "🦒" },
+  { word: "penguin", emoji: "🐧" },
+  { word: "rabbit", emoji: "🐰" },
+  { word: "turtle", emoji: "🐢" },
+  { word: "monkey", emoji: "🐵" },
+  { word: "dolphin", emoji: "🐬" },
+  { word: "zebra", emoji: "🦓" },
+  { word: "tiger", emoji: "🐯" },
+  { word: "horse", emoji: "🐴" }
+];
+var order = [];
+var index = 0;
+var score = 0;
+var streak = 0;
+var built = [];
+var pool = [];
+var locked = false;
+
+function shuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+function extraLetters(word) {
+  var extras = "aeioubcdfghlmnprst";
+  var out = word.split("");
+  while (out.length < word.length + 3) {
+    out.push(extras[Math.floor(Math.random() * extras.length)]);
+  }
+  return shuffle(out);
+}
+
+function start() {
+  order = shuffle(animals).slice(0, 10);
+  index = 0;
+  score = 0;
+  streak = 0;
+  document.getElementById("end").classList.add("hidden");
+  document.getElementById("play").classList.remove("hidden");
+  show();
+}
+
+function show() {
+  var item = order[index];
+  built = [];
+  locked = false;
+  pool = extraLetters(item.word).map(function (ch) {
+    return { ch: ch, used: false };
+  });
+  document.getElementById("emoji").textContent = item.emoji;
+  document.getElementById("score").textContent = score;
+  document.getElementById("streak").textContent = streak;
+  document.getElementById("num").textContent = index + 1;
+  document.getElementById("bar").style.width = (index * 10) + "%";
+  document.getElementById("msg").textContent = "";
+  document.getElementById("msg").className = "msg";
+  document.getElementById("check").classList.remove("hidden");
+  document.getElementById("next").classList.add("hidden");
+  draw();
+}
+
+function draw() {
+  var slots = document.getElementById("slots");
+  var letters = document.getElementById("letters");
+  slots.innerHTML = "";
+  letters.innerHTML = "";
+  var need = order[index].word.length;
+  for (var i = 0; i < need; i++) {
+    var s = document.createElement("div");
+    s.className = "slot" + (built[i] ? " filled" : "");
+    s.textContent = built[i] ? built[i].ch : "";
+    if (built[i] && !locked) {
+      s.onclick = (function (n) {
+        return function () { removeAt(n); };
+      })(i);
+    }
+    slots.appendChild(s);
+  }
+  for (var k = 0; k < pool.length; k++) {
+    var b = document.createElement("button");
+    b.className = "letter";
+    b.textContent = pool[k].ch;
+    b.disabled = pool[k].used || locked;
+    b.onclick = (function (n) {
+      return function () { pick(n); };
+    })(k);
+    letters.appendChild(b);
+  }
+}
+
+function pick(n) {
+  if (locked || pool[n].used) return;
+  if (built.length >= order[index].word.length) return;
+  pool[n].used = true;
+  built.push({ ch: pool[n].ch, from: n });
+  draw();
+}
+
+function removeAt(n) {
+  if (locked) return;
+  var piece = built[n];
+  if (!piece) return;
+  pool[piece.from].used = false;
+  built.splice(n, 1);
+  draw();
+}
+
+function check() {
+  if (locked) return;
+  var word = order[index].word;
+  var guess = built.map(function (p) { return p.ch; }).join("");
+  var msg = document.getElementById("msg");
+  if (built.length < word.length) {
+    msg.className = "msg try";
+    msg.textContent = "Not quite - add more letters!";
+    return;
+  }
+  if (guess === word) {
+    score += 1;
+    streak += 1;
+    locked = true;
+    msg.className = "msg good";
+    msg.textContent = streak > 1 ? "Yes! " + streak + " in a row!" : "Yes! Great spelling!";
+    document.getElementById("score").textContent = score;
+    document.getElementById("streak").textContent = streak;
+    document.getElementById("check").classList.add("hidden");
+    document.getElementById("next").classList.remove("hidden");
+    document.getElementById("bar").style.width = ((index + 1) * 10) + "%";
+    draw();
+  } else {
+    streak = 0;
+    document.getElementById("streak").textContent = "0";
+    msg.className = "msg try";
+    msg.textContent = "Not quite - try again!";
+    built.forEach(function (p) { pool[p.from].used = false; });
+    built = [];
+    draw();
+  }
+}
+
+function nextWord() {
+  index += 1;
+  if (index >= order.length) finish();
+  else show();
+}
+
+function finish() {
+  document.getElementById("play").classList.add("hidden");
+  document.getElementById("end").classList.remove("hidden");
+  document.getElementById("endmsg").textContent = score === 10
+    ? "Wow, 10 out of 10! You are a spelling star!"
+    : "You spelled " + score + " out of 10. Nice work!";
+  document.getElementById("score").textContent = score;
+}
+
+document.getElementById("check").onclick = check;
+document.getElementById("next").onclick = nextWord;
+document.getElementById("again").onclick = start;
+start();
+</script>
+</body>
+</html>
