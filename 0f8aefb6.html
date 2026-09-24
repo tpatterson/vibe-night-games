@@ -159,12 +159,12 @@
       <div class="needle"></div>
     </div>
   </div>
-  <div class="msg" id="msg">Red glowing shapes can hurt you. Pale threads are safe silk to catch.</div>
+  <div class="msg" id="msg">Press S to start. Red shapes hurt you. Pale threads are safe silk.</div>
   <div class="controls">
     <button id="left">◀ Left</button>
     <button class="jump" id="jumpbtn">Leap G</button>
     <button class="boom" id="boombtn">Burst F</button>
-    <button class="alt" id="start">Start dance</button>
+    <button class="alt" id="start">Start S</button>
     <button class="heal" id="healbtn">Heal H</button>
     <button id="right">Right ▶</button>
   </div>
@@ -417,6 +417,13 @@ function loop(t) {
   }
   if (running) requestAnimationFrame(loop);
 }
+function startGame() {
+  resetRound();
+  running = true;
+  last = 0;
+  cheer("Dodge the red attacks. Catch the pale silk threads!");
+  requestAnimationFrame(loop);
+}
 document.getElementById("left").addEventListener("pointerdown", () => keys.left = true);
 document.getElementById("right").addEventListener("pointerdown", () => keys.right = true);
 window.addEventListener("pointerup", () => { keys.left = false; keys.right = false; });
@@ -426,6 +433,7 @@ window.addEventListener("keydown", e => {
   if (e.key === "h" || e.key === "H") useHeal();
   if (e.key === "g" || e.key === "G") leap();
   if (e.key === "f" || e.key === "F") boom();
+  if (e.key === "s" || e.key === "S") startGame();
 });
 window.addEventListener("keyup", e => {
   if (e.key === "ArrowLeft") keys.left = false;
@@ -434,13 +442,7 @@ window.addEventListener("keyup", e => {
 document.getElementById("healbtn").onclick = useHeal;
 document.getElementById("jumpbtn").onclick = leap;
 document.getElementById("boombtn").onclick = boom;
-document.getElementById("start").onclick = () => {
-  resetRound();
-  running = true;
-  last = 0;
-  cheer("Dodge the red attacks. Catch the pale silk threads!");
-  requestAnimationFrame(loop);
-};
+document.getElementById("start").onclick = startGame;
 paintHp();
 layout();
 window.addEventListener("resize", layout);
