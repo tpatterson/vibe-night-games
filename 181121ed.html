@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hogwarts Trivia Night</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    background: linear-gradient(160deg, #1a1030, #3b1d4a 45%, #6b3a1f);
+    color: #fff8e7;
+    min-height: 100vh;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 2.1rem;
+    margin: 8px 0 4px;
+    color: #ffd76a;
+    letter-spacing: 0.5px;
+  }
+  .sub {
+    text-align: center;
+    font-size: 1.15rem;
+    margin: 0 0 16px;
+    color: #ffe7b8;
+  }
+  .stats {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .pill {
+    background: #fff8e7;
+    color: #3b1d4a;
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+  .bar-track {
+    height: 16px;
+    background: rgba(255,248,231,0.25);
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 8px 0 18px;
+  }
+  .bar-fill {
+    height: 100%;
+    width: 0%;
+    background: #ffd76a;
+    transition: width 0.3s ease;
+  }
+  .card {
+    background: #fff8e7;
+    color: #2a1838;
+    border-radius: 22px;
+    padding: 22px 18px 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.28);
+  }
+  .qnum {
+    font-size: 1rem;
+    color: #7a4b2a;
+    margin: 0 0 8px;
+    font-weight: bold;
+  }
+  .question {
+    font-size: 1.28rem;
+    line-height: 1.35;
+    margin: 0 0 16px;
+  }
+  .choices { display: flex; flex-direction: column; gap: 12px; }
+  button.choice, button.big {
+    font-family: inherit;
+    font-size: 1.08rem;
+    padding: 16px 14px;
+    border-radius: 16px;
+    border: 3px solid #c9a24a;
+    background: #fff;
+    color: #2a1838;
+    cursor: pointer;
+    text-align: left;
+  }
+  button.choice:hover, button.big:hover { background: #fff3c4; }
+  button.choice.good { background: #b7f0c2; border-color: #2e8b4a; }
+  button.choice.bad { background: #ffd0c8; border-color: #c45a4a; }
+  button:disabled { cursor: default; }
+  .msg {
+    min-height: 2.4em;
+    font-size: 1.15rem;
+    margin: 14px 0 0;
+    font-weight: bold;
+    color: #5a2d78;
+  }
+  .end { text-align: center; }
+  .end h2 { font-size: 1.8rem; margin: 0 0 8px; }
+  .end p { font-size: 1.25rem; }
+  button.big {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: #ffd76a;
+    margin-top: 10px;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Hogwarts Trivia Night</h1>
+  <p class="sub">Deep-lore mode. Only a true Hogwarts historian survives this one.</p>
+  <div class="stats">
+    <div class="pill" id="scorePill">Score: 0</div>
+    <div class="pill" id="streakPill">Streak: 0</div>
+  </div>
+  <div class="bar-track"><div class="bar-fill" id="bar"></div></div>
+  <div class="card" id="card"></div>
+</div>
+<script>
+const QUESTIONS = [
+  {
+    q: "What is the exact incantation Dumbledore uses to unlock the door at the top of the tower on the night he dies?",
+    choices: [
+      "He does not need one - Draco has already unlocked it",
+      "Alohomora",
+      "Dissendium",
+      "Portus"
+    ],
+    a: 0
+  },
+  {
+    q: "What was the name of the Hogwarts caretaker immediately before Argus Filch?",
+    choices: [
+      "The book never names Filch's predecessor",
+      "Apollyon Pringle",
+      "Ogden the Elder",
+      "Rancorous Carpe"
+    ],
+    a: 0
+  },
+  {
+    q: "What is the precise message, word for word, that Sirius Black scratches into the Marauder's Map area during his escape near the Fat Lady's portrait? (Trick question - check the books)",
+    choices: [
+      "This event does not occur in the books at all",
+      "\"I know you\"",
+      "\"Mischief managed\"",
+      "\"Prongs lives\""
+    ],
+    a: 0
+  },
+  {
+    q: "According to Newt Scamander's book as referenced in canon, what is the maximum recorded number of a Niffler's litter... actually, what number does Gringotts assign as Harry's vault number?",
+    choices: [
+      "687",
+      "713",
+      "621",
+      "394"
+    ],
+    a: 0
+  },
+  {
+    q: "What is the full title Hermione reads aloud from the plaque on the Fountain of Magical Brethren in the Ministry atrium?",
+    choices: [
+      "Magic is Might",
+      "Fountain of Fair Fortune",
+      "In Memory of Those Who Died",
+      "Unity Through Magic"
+    ],
+    a: 0
+  },
+  {
+    q: "What does the Put-Outer that Dumbledore uses in the first chapter of the first book later come to be called once its origin is revealed?",
+    choices: [
+      "The Deluminator",
+      "The Sneakoscope",
+      "The Foe-Glass",
+      "The Extinguisher"
+    ],
+    a: 0
+  },
+  {
+    q: "What is the name of the Hogwarts ghost who haunts the girls' bathroom on the first floor, and what is her actual first name (not just her nickname)?",
+    choices: [
+      "Myrtle Elizabeth Warren",
+      "Myrtle Elizabeth Smith",
+      "Myrtle Eloise Warren",
+      "Myrtle Elaine Warren"
+    ],
+    a: 0
+  },
+  {
+    q: "Which specific potion ingredient does Snape's Half-Blood Prince textbook suggest bezoars can substitute for in an emergency, as Harry recalls in his first Potions class?",
+    choices: [
+      "A cure for most poisons, no antidote-mixing required",
+      "Powdered moonstone",
+      "Boomslang skin",
+      "Dried nettles"
+    ],
+    a: 0
+  },
+  {
+    q: "What number is engraved on the door of the Room of Requirement's chamber where the D.A. hides, as described relative to the tapestry of Barnabas the Barmy?",
+    choices: [
+      "No specific number is ever given - only the tapestry marks it",
+      "Room Seven",
+      "Room Twelve",
+      "Room Thirteen"
+    ],
+    a: 0
+  },
+  {
+    q: "Whose exact final words are \"Kill me then\" moments before their death at Malfoy Manor?",
+    choices: [
+      "This line is never spoken - identify the trick",
+      "Sirius Black's",
+      "Dobby's",
+      "Fred Weasley's"
+    ],
+    a: 0
+  }
+];
+
+let index = 0;
+let score = 0;
+let streak = 0;
+let locked = false;
+
+const card = document.getElementById("card");
+const scorePill = document.getElementById("scorePill");
+const streakPill = document.getElementById("streakPill");
+const bar = document.getElementById("bar");
+
+function render() {
+  scorePill.textContent = "Score: " + score;
+  streakPill.textContent = "Streak: " + streak;
+  bar.style.width = (index / QUESTIONS.length * 100) + "%";
+  if (index >= QUESTIONS.length) {
+    bar.style.width = "100%";
+    const note = score >= 8
+      ? "You have basically memorised the books word for word."
+      : score >= 5
+      ? "Real fan-level knowledge, only the deepest cuts got you."
+      : "Absolutely brutal round - these are true archive-level facts.";
+    card.innerHTML =
+      '<div class="end"><h2>Round complete</h2><p>You scored ' + score +
+      ' out of ' + QUESTIONS.length + '.</p><p>' + note +
+      '</p><button class="big" id="again">Play again</button></div>';
+    document.getElementById("again").onclick = reset;
+    return;
+  }
+  const item = QUESTIONS[index];
+  const buttons = item.choices.map(function (choice, i) {
+    return '<button class="choice" data-i="' + i + '">' + choice + "</button>";
+  }).join("");
+  card.innerHTML =
+    '<p class="qnum">Question ' + (index + 1) + " of " + QUESTIONS.length + "</p>" +
+    '<p class="question">' + item.q + "</p>" +
+    '<div class="choices">' + buttons + "</div>" +
+    '<p class="msg" id="msg"></p>';
+  locked = false;
+  card.querySelectorAll(".choice").forEach(function (btn) {
+    btn.onclick = function () { pick(Number(btn.dataset.i)); };
+  });
+}
+
+function pick(choice) {
+  if (locked) return;
+  locked = true;
+  const item = QUESTIONS[index];
+  const buttons = card.querySelectorAll(".choice");
+  buttons.forEach(function (btn) { btn.disabled = true; });
+  buttons[item.a].classList.add("good");
+  const msg = document.getElementById("msg");
+  if (choice === item.a) {
+    score += 1;
+    streak += 1;
+    msg.textContent = streak > 1
+      ? "Yes! Streak of " + streak + " — splendid work!"
+      : "Yes! That is exactly right.";
+  } else {
+    buttons[choice].classList.add("bad");
+    streak = 0;
+    msg.textContent = "Not quite - try again next one! The answer glows green.";
+  }
+  scorePill.textContent = "Score: " + score;
+  streakPill.textContent = "Streak: " + streak;
+  setTimeout(function () {
+    index += 1;
+    render();
+  }, 1100);
+}
+
+function reset() {
+  index = 0;
+  score = 0;
+  streak = 0;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
