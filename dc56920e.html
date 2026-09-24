@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Computer Parts Quiz</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    background: linear-gradient(160deg, #7ec8ff 0%, #ffe28a 55%, #ffb3d9 100%);
+    min-height: 100vh; color: #1a2a4a; padding: 16px;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { text-align: center; font-size: 2rem; margin: 8px 0 4px; }
+  .sub { text-align: center; font-size: 1.05rem; margin: 0 0 12px; }
+  .bar-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .pill { background: #fff; border-radius: 999px; padding: 8px 14px; font-size: 1rem; font-weight: bold; box-shadow: 0 4px 0 #c9a84a; }
+  .card { background: #fffdf6; border-radius: 24px; padding: 18px 16px 22px; box-shadow: 0 8px 0 #e0b84a; }
+  .emoji { font-size: 2.6rem; text-align: center; }
+  .q { font-size: 1.22rem; text-align: center; margin: 6px 0 10px; line-height: 1.3; }
+  .hint, .facts { text-align: center; font-size: 1.02rem; margin: 0 0 10px; line-height: 1.4; }
+  .lesson { background: #f4f7ff; border-radius: 14px; margin: 8px 0; padding: 10px 12px; font-size: 1.02rem; line-height: 1.4; }
+  .choices { display: grid; gap: 10px; }
+  button.choice, button.part {
+    font-size: 1.02rem; padding: 12px; border-radius: 16px; border: 3px solid #3d6cff;
+    background: #eef3ff; color: #1a2a4a; cursor: pointer; font-weight: bold; text-align: left;
+  }
+  button.choice:hover, button.part:hover { background: #d9e6ff; }
+  button.choice:disabled, button.part:disabled { cursor: default; }
+  button.choice.good, button.part.good { background: #b8f5c8; border-color: #1a9a4a; }
+  button.choice.bad { background: #ffd6d6; border-color: #d04545; }
+  .msg { min-height: 4.2rem; text-align: center; font-size: 1.02rem; font-weight: bold; margin-top: 8px; line-height: 1.35; }
+  .msg.ok { color: #0d7a36; }
+  .msg.no { color: #b33a3a; }
+  .progress { height: 16px; background: #efe6c8; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+  .progress > div { height: 100%; width: 0%; background: linear-gradient(90deg, #4aa3ff, #7b5cff); }
+  .go, .again {
+    display: block; width: 100%; margin: 10px auto 0; font-size: 1.15rem; padding: 14px;
+    border-radius: 18px; border: none; background: #ff8a3d; color: #fff; font-weight: bold; cursor: pointer;
+  }
+  .again { background: #5b7cff; }
+  .hidden { display: none; }
+  .slot { background: #f4f7ff; border-radius: 12px; margin: 6px 0; padding: 8px 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Computer Parts Quiz</h1>
+  <p class="sub">Lesson first, then harder questions, then a pretend build.</p>
+  <div class="bar-row">
+    <div class="pill">Score: <span id="score">0</span></div>
+    <div class="pill">Streak: <span id="streak">0</span></div>
+    <div class="pill">Cost: $<span id="cost">0</span></div>
+    <div class="pill"><span id="stepLabel">Lesson</span> <span id="num">1</span> / <span id="total">2</span></div>
+  </div>
+  <div class="card">
+    <div id="partsLesson">
+      <div class="emoji">💻</div>
+      <div class="q">Meet the team before the quiz</div>
+      <div class="lesson"><b>CPU, the brain.</b> Clock speed is how fast one worker goes. Cores are extra workers. A middle brain is enough for school and many games. A top brain finishes hard jobs faster and costs much more.</div>
+      <div class="lesson"><b>RAM, the desk.</b> It holds what you are using right now and forgets when power goes off. Two matching sticks (dual channel) can share the path and feel quicker than one lonely stick. Memory costs more right now, so a huge desk can jump in price.</div>
+      <div class="lesson"><b>Motherboard, the map.</b> The socket must match the CPU. The chipset decides extra roads, like how many fast storage slots you get.</div>
+      <div class="lesson"><b>Storage: HDD, SATA SSD, NVMe SSD.</b> An HDD spins and is cheaper for old photos, but slower. A SATA SSD has no spin and uses a cable. An NVMe SSD plugs into a fast slot and usually opens games quickest. A middle NVMe is the usual home pick.</div>
+      <div class="lesson"><b>GPU, the artist, and FPS.</b> The GPU draws games and video. FPS is pictures each second. About 30 can look jumpy, 60 looks smooth, and 120 looks extra smooth if the monitor can keep up. VRAM is the artist's own desk for textures. A small artist can live inside some CPUs. A card is a stronger artist. Higher resolution means more pixels, so the same card gets fewer FPS.</div>
+      <div class="lesson"><b>Power, case, and you.</b> The power supply should cover the parts with spare room. The case needs airflow. Keyboard and mouse are how you talk. The screen only shows the picture.</div>
+      <button class="go" id="toBrands">Next: brands and prices</button>
+    </div>
+    <div id="brandLesson" class="hidden">
+      <div class="emoji">🏷️</div>
+      <div class="q">Brands are shops with different strengths</div>
+      <div class="lesson"><b>Same shelf, different tools.</b> Intel and AMD both make CPU brains. Nvidia, AMD, and Intel all make GPU artists. Compare the actual part, not just the logo.</div>
+      <div class="lesson"><b>CPU advantages.</b> Intel is often easy to find and strong on one hard task plus everyday school and games. AMD often gives more cores for the money, which helps when you game and make videos together. Both have starter, middle, and pricey top chips. The board socket must match that brand.</div>
+      <div class="lesson"><b>GPU advantages.</b> Nvidia is often the smoothest in big games and video tools, with helpful extras, and the top cards get very expensive. AMD is often the better game picture for the money. Intel cards are newer, usually cheaper, and a friendly pick for class and lighter games. A stronger card usually means higher FPS in the same game and resolution.</div>
+      <div class="lesson"><b>Series, balance, and price.</b> Low series is the starter, middle is the sweet spot, and top looks best but the price jumps. A top artist with a tiny brain or a tiny power feeder wastes money. One nice part plus middle friends is the smart home build.</div>
+      <button class="go" id="start">I get it — start the quiz</button>
+    </div>
+    <div id="play" class="hidden">
+      <div class="emoji" id="emoji">💻</div>
+      <div class="q" id="question"></div>
+      <div class="choices" id="choices"></div>
+      <div class="msg" id="msg"></div>
+      <div class="progress"><div id="fill"></div></div>
+    </div>
+    <div id="bridge" class="hidden">
+      <div class="emoji">🧰</div>
+      <div class="q" id="final"></div>
+      <p class="facts" id="facts"></p>
+      <button class="go" id="toBuild">Pick parts and build</button>
+      <button class="again" id="again">Play the quiz again</button>
+    </div>
+    <div id="build" class="hidden">
+      <div class="emoji" id="bEmoji">🧠</div>
+      <div class="q" id="bTitle"></div>
+      <p class="hint" id="bHint"></p>
+      <div class="choices" id="bChoices"></div>
+      <div class="msg" id="bMsg"></div>
+      <div class="progress"><div id="bFill"></div></div>
+    </div>
+    <div id="built" class="hidden">
+      <div class="emoji">🎉</div>
+      <div class="q">Your computer is built!</div>
+      <div id="pc"></div>
+      <p class="facts" id="budgetNote"></p>
+      <button class="go" id="buildAgain">Build another computer</button>
+      <button class="again" id="quizAgain">Back to the lessons</button>
+    </div>
+  </div>
+</div>
+<script>
+var questions = [
+  { e: "🧠", q: "A game uses one main job, but video editing uses many. What helps each?", a: "A faster clock helps one job; more cores help many jobs", why: "Clock speed is one worker's pace. Cores are extra workers. A middle chip balances both without the top-chip price.", wrong: ["Only the case color changes speed", "More storage always means a faster brain", "RAM replaces the need for cores"] },
+  { e: "📚", q: "You have 32 GB as one stick, or 32 GB as two matching sticks. What is true?", a: "Two matching sticks can use dual channel and share the path", why: "RAM is a fast desk that forgets at shutdown. Dual channel is two lanes. A huge kit costs a lot more right now, so 32 GB is a smart middle desk.", wrong: ["One stick is always twice as fast", "RAM keeps photos after power off", "Two sticks turn RAM into an SSD"] },
+  { e: "🗺️", q: "You love a CPU, but the board is for the other brand. What happens?", a: "It will not fit because the socket and chipset must match", why: "The motherboard is the map. A wrong socket cannot hold that brain. The chipset also decides extra fast-storage slots.", wrong: ["Any CPU fits any board if you push", "The power supply changes the socket", "The monitor chooses the CPU brand"] },
+  { e: "💾", q: "Rank these for opening a game, fastest to slowest, in a normal home PC.", a: "NVMe SSD, then SATA SSD, then spinning HDD", why: "All three keep files after shutdown. NVMe uses a fast slot. SATA SSD has no spin but a slower cable. An HDD is a spinning cupboard, cheaper for old photos.", wrong: ["HDD, then NVMe, then SATA", "They all open games at the same speed", "SATA SSD forgets files when power goes off"] },
+  { e: "🎮", q: "A strong GPU stutters in a huge open-world game. What might be too small?", a: "VRAM, the artist's own desk for textures", why: "The GPU draws the picture. VRAM holds textures nearby. Too little VRAM can stutter even if the card is strong. The monitor only shows the drawing.", wrong: ["The mouse pad is too thin", "The keyboard cannot store textures", "A bigger case always adds VRAM"] },
+  { e: "🎞️", q: "Same GPU and game. Why can 1080p feel smoother than 4K?", a: "1080p has fewer pixels, so the artist can draw more FPS", why: "FPS is pictures each second. 60 is a happy goal. 120 needs a strong artist and a fast monitor. Higher resolution means more pixels to paint, so FPS often drops.", wrong: ["4K always means higher FPS", "FPS counts files on the disk", "Resolution is the color of the case"] },
+  { e: "🏷️", q: "Which CPU shopping note is the fairest?", a: "Match the socket, then compare cores, clock, and price", why: "Intel is often strong for one tough task and easy everyday use. AMD often offers more cores for the money. Neither logo stores your files.", wrong: ["Only one brand can think", "A pricier logo always has more cores", "The brand is chosen by the mouse"] },
+  { e: "🎨", q: "You want smooth 1440p games without the most expensive card. What is a fair plan?", a: "A middle AMD or Nvidia card, not a top series", why: "Nvidia often has the smoothest extras. AMD often gives more game FPS for the money. Intel is a cheaper starter for lighter play. Top series chase very high FPS and jump in price.", wrong: ["Any sticker gives the same FPS", "A starter card always beats a middle card at 4K", "The power cable draws the frames"] },
+  { e: "📊", q: "You buy a top GPU, a tiny CPU, and a gentle power supply. What is the problem?", a: "The tiny brain and feeder can waste the top artist", why: "Parts should be balanced. A top card waiting on a tiny CPU, or starving for power, does not give the FPS you paid for. Middle friends around one nice part is the smart spend.", wrong: ["Top parts always fix each other", "Price does not change with series", "A small case adds FPS by itself"] },
+  { e: "🔌", q: "Your parts want about 450 watts. Which feeder is the kindest plan?", a: "A trusted unit with spare room, not just the biggest number", why: "The power supply feeds safe electricity. Spare room helps a stronger artist later. A giant cheap number is not automatically safer than a trusted middle unit.", wrong: ["Any wall plug replaces a power supply", "Wattage is how many photos you can store", "A weaker feeder makes a top GPU faster"] }
+];
+var slots = [
+  { key: "cpu", e: "🧠", name: "CPU", hint: "Intel: easy everyday strength. AMD: often more cores for the money. The board socket must match. Middle chips are the sweet spot.", picks: [
+    { t: "Starter brain", d: "Either brand, school jobs", price: 140, rank: 1 },
+    { t: "Middle Intel brain", d: "Everyday plus games", price: 280, rank: 2 },
+    { t: "Middle AMD brain", d: "Games and creating", price: 250, rank: 2 },
+    { t: "Top brain", d: "Hard jobs, pricey", price: 550, rank: 3 }
+  ]},
+  { key: "ram", e: "📚", name: "Memory", hint: "Two matching sticks can share the path. Memory costs more these days, so the huge desk jumps in price.", picks: [
+    { t: "Small desk", d: "16 GB, a few apps", price: 120, rank: 1 },
+    { t: "Roomy desk", d: "32 GB, the smart middle", price: 220, rank: 2 },
+    { t: "Huge desk", d: "64 GB, lots of windows", price: 420, rank: 3 }
+  ]},
+  { key: "store", e: "💾", name: "Storage", hint: "HDD spins and is cheaper space. SATA SSD is snappy. NVMe is usually the fastest opener. A 1 TB NVMe is the usual middle ground.", picks: [
+    { t: "Big HDD shelf", d: "Spinning, lots of old files", price: 80, rank: 1 },
+    { t: "Middle NVMe SSD", d: "Fast 1 TB, smart pick", price: 110, rank: 2 },
+    { t: "Big fast SSD", d: "2 TB, snappy, pricier", price: 180, rank: 3 }
+  ]},
+  { key: "gpu", e: "🎮", name: "Graphics", hint: "FPS is pictures each second, and 1440p is harder than 1080p. Intel starter: lighter play. AMD middle: often better FPS for the money. Nvidia middle: smoother extras. Top cards jump in price.", picks: [
+    { t: "Intel starter series", d: "School, lighter FPS", price: 180, rank: 1 },
+    { t: "AMD middle series", d: "Fun 60 FPS for the money", price: 380, rank: 2 },
+    { t: "Nvidia middle series", d: "Smoother games and video", price: 500, rank: 2 },
+    { t: "AMD top series", d: "High FPS, pricey", price: 850, rank: 3 },
+    { t: "Nvidia top series", d: "Very high FPS, very pricey", price: 1400, rank: 3 }
+  ]},
+  { key: "psu", e: "🔌", name: "Power", hint: "Leave spare room. A top artist likes a stronger trusted feeder, not a tiny one.", picks: [
+    { t: "Gentle feeder", d: "Starter parts", price: 70, rank: 1 },
+    { t: "Steady feeder", d: "Middle build", price: 120, rank: 2 },
+    { t: "Strong feeder", d: "Room for a top artist", price: 190, rank: 3 }
+  ]},
+  { key: "case", e: "📦", name: "Case", hint: "A roomy case with airflow is kinder for a first build.", picks: [
+    { t: "Sunny small box", d: "Easy to carry", price: 70, rank: 1 },
+    { t: "Sky blue tower", d: "Roomy middle case", price: 120, rank: 2 },
+    { t: "Rainbow fort", d: "Most space", price: 180, rank: 3 }
+  ]}
+];
+var order = [], index = 0, score = 0, streak = 0, locked = false;
+var bIndex = 0, picked = [], cost = 0;
+function shuffle(list) {
+  var a = list.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function show(id) {
+  ["partsLesson", "brandLesson", "play", "bridge", "build", "built"].forEach(function (x) {
+    document.getElementById(x).classList.toggle("hidden", x !== id);
+  });
+}
+function setStep(label, n, total) {
+  document.getElementById("stepLabel").textContent = label;
+  document.getElementById("num").textContent = n;
+  document.getElementById("total").textContent = total;
+}
+function startLessons() {
+  score = 0; streak = 0; cost = 0;
+  document.getElementById("score").textContent = "0";
+  document.getElementById("streak").textContent = "0";
+  document.getElementById("cost").textContent = "0";
+  setStep("Lesson", 1, 2);
+  show("partsLesson");
+}
+function startGame() {
+  order = shuffle(questions);
+  index = 0; locked = false;
+  setStep("Question", 1, 10);
+  show("play");
+  showQuestion();
+}
+function updateHud() {
+  document.getElementById("score").textContent = score;
+  document.getElementById("streak").textContent = streak;
+  document.getElementById("cost").textContent = cost;
+  document.getElementById("num").textContent = Math.min(index + 1, 10);
+  document.getElementById("fill").style.width = (index / 10 * 100) + "%";
+}
+function showQuestion() {
+  locked = false;
+  var item = order[index];
+  document.getElementById("emoji").textContent = item.e;
+  document.getElementById("question").textContent = item.q;
+  document.getElementById("msg").textContent = "";
+  document.getElementById("msg").className = "msg";
+  var box = document.getElementById("choices");
+  box.innerHTML = "";
+  shuffle([item.a].concat(item.wrong)).forEach(function (text) {
+    var b = document.createElement("button");
+    b.className = "choice";
+    b.textContent = text;
+    b.onclick = function () { pick(b, text, item); };
+    box.appendChild(b);
+  });
+  updateHud();
+}
+function pick(btn, text, item) {
+  if (locked) return;
+  locked = true;
+  var buttons = document.querySelectorAll("#choices .choice");
+  buttons.forEach(function (b) { b.disabled = true; });
+  var msg = document.getElementById("msg");
+  if (text === item.a) {
+    btn.classList.add("good");
+    score += 10; streak += 1;
+    msg.textContent = "Yes! " + item.why;
+    msg.className = "msg ok";
+  } else {
+    btn.classList.add("bad");
+    streak = 0;
+    buttons.forEach(function (b) { if (b.textContent === item.a) b.classList.add("good"); });
+    msg.textContent = "Not quite - try again! " + item.why;
+    msg.className = "msg no";
+  }
+  updateHud();
+  setTimeout(function () {
+    index += 1;
+    if (index >= 10) finishQuiz();
+    else showQuestion();
+  }, 3000);
+}
+function finishQuiz() {
+  document.getElementById("fill").style.width = "100%";
+  document.getElementById("final").textContent = "You scored " + score + " out of 100!";
+  document.getElementById("facts").textContent = (score >= 80 ? "You handled the harder parts, FPS, and balance questions!" : "Great practice! The lessons are still there if you want them again.") + " Next, watch the pretend price.";
+  show("bridge");
+}
+function startBuild() {
+  bIndex = 0; picked = []; cost = 0;
+  document.getElementById("cost").textContent = "0";
+  setStep("Part", 1, 6);
+  show("build");
+  showSlot();
+}
+function showSlot() {
+  var slot = slots[bIndex];
+  document.getElementById("bEmoji").textContent = slot.e;
+  document.getElementById("bTitle").textContent = "Pick a " + slot.name;
+  document.getElementById("bHint").textContent = slot.hint;
+  document.getElementById("bMsg").textContent = "";
+  document.getElementById("num").textContent = bIndex + 1;
+  document.getElementById("bFill").style.width = (bIndex / 6 * 100) + "%";
+  var box = document.getElementById("bChoices");
+  box.innerHTML = "";
+  slot.picks.forEach(function (p) {
+    var b = document.createElement("button");
+    b.className = "part";
+    b.textContent = p.t + " — " + p.d + " — $" + p.price;
+    b.onclick = function () { choosePart(b, slot, p); };
+    box.appendChild(b);
+  });
+}
+function choosePart(btn, slot, p) {
+  document.querySelectorAll("#bChoices .part").forEach(function (b) { b.disabled = true; });
+  btn.classList.add("good");
+  picked.push({ e: slot.e, name: slot.name, t: p.t, price: p.price, rank: p.rank, key: slot.key });
+  cost += p.price; score += 5;
+  document.getElementById("score").textContent = score;
+  document.getElementById("cost").textContent = cost;
+  var extra = p.rank === 3 ? " Top pick — the price jumps." : (p.rank === 2 ? " Middle ground — nice balance." : " Gentle starter — kind on the budget.");
+  document.getElementById("bMsg").textContent = "Nice pick! " + extra;
+  document.getElementById("bMsg").className = "msg ok";
+  setTimeout(function () {
+    bIndex += 1;
+    if (bIndex >= 6) showBuilt();
+    else showSlot();
+  }, 800);
+}
+function showBuilt() {
+  document.getElementById("bFill").style.width = "100%";
+  var html = "", tops = 0, gpu = null, psu = null, cpu = null;
+  picked.forEach(function (p) {
+    if (p.rank === 3) tops += 1;
+    if (p.key === "gpu") gpu = p;
+    if (p.key === "psu") psu = p;
+    if (p.key === "cpu") cpu = p;
+    html += "<div class='slot'>" + p.e + " " + p.name + ": " + p.t + " ($" + p.price + ")</div>";
+  });
+  document.getElementById("pc").innerHTML = html + "<div class='slot'>Practice total: $" + cost + "</div>";
+  var note = "Sweet middle ground! Real jobs, without every top part.";
+  if (cost >= 2200 || tops >= 3) note = "Powerful and pricey. Swap a top part for a middle one to save a lot.";
+  else if (cost < 800) note = "A gentle starter, great for school and learning.";
+  if (gpu && psu && gpu.rank === 3 && psu.rank === 1) note += " A top artist likes a stronger power feeder.";
+  if (gpu && cpu && gpu.rank === 3 && cpu.rank === 1) note += " A tiny brain can hold back a top artist.";
+  document.getElementById("budgetNote").textContent = note;
+  show("built");
+}
+document.getElementById("toBrands").onclick = function () {
+  score += 5;
+  document.getElementById("score").textContent = score;
+  setStep("Lesson", 2, 2);
+  show("brandLesson");
+};
+document.getElementById("start").onclick = function () { score += 5; startGame(); };
+document.getElementById("again").onclick = startGame;
+document.getElementById("quizAgain").onclick = startLessons;
+document.getElementById("toBuild").onclick = startBuild;
+document.getElementById("buildAgain").onclick = startBuild;
+</script>
+</body>
+</html>
