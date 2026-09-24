@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sunny Road Racer</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    background: #87ceeb;
+    color: #1a365d;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  .wrap {
+    width: min(480px, 100%);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  h1 {
+    margin: 0;
+    text-align: center;
+    font-size: 2rem;
+    color: #fff;
+    text-shadow: 2px 2px 0 #2b6cb0;
+  }
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 10px 14px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    box-shadow: 0 4px 0 #bee3f8;
+  }
+  .bar-wrap {
+    background: #fff;
+    border-radius: 16px;
+    padding: 8px 12px;
+  }
+  .bar {
+    height: 18px;
+    background: #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #48bb78, #f6e05e);
+    transition: width 0.2s;
+  }
+  #road {
+    position: relative;
+    height: 420px;
+    background: #4a5568;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 6px solid #2d3748;
+    touch-action: none;
+  }
+  .lane-line {
+    position: absolute;
+    left: 50%;
+    width: 8px;
+    height: 40px;
+    margin-left: -4px;
+    background: #faf089;
+    border-radius: 4px;
+  }
+  .car {
+    position: absolute;
+    bottom: 16px;
+    width: 64px;
+    height: 72px;
+    font-size: 52px;
+    line-height: 72px;
+    text-align: center;
+    transition: left 0.08s linear;
+    user-select: none;
+  }
+  .thing {
+    position: absolute;
+    font-size: 36px;
+    line-height: 1;
+    text-align: center;
+    user-select: none;
+  }
+  .thing.cone { font-size: 58px; width: 64px; }
+  .thing.traffic { font-size: 52px; width: 64px; }
+  .thing.star { width: 48px; }
+  .msg {
+    min-height: 2.4rem;
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 1px 1px 0 #2b6cb0;
+  }
+  .controls { display: flex; gap: 12px; }
+  button {
+    flex: 1;
+    font-size: 1.6rem;
+    font-weight: 700;
+    padding: 16px 8px;
+    border: none;
+    border-radius: 18px;
+    background: #f6ad55;
+    color: #1a202c;
+    box-shadow: 0 5px 0 #c05621;
+    cursor: pointer;
+  }
+  button:active { transform: translateY(3px); box-shadow: 0 2px 0 #c05621; }
+  button.go { background: #68d391; box-shadow: 0 5px 0 #276749; }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(26, 54, 93, 0.82);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+    gap: 12px;
+    z-index: 5;
+  }
+  .overlay h2 { margin: 0; font-size: 2rem; }
+  .overlay p { margin: 0; font-size: 1.2rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Sunny Road Racer</h1>
+  <div class="hud">
+    <span id="level">Level 1</span>
+    <span id="score">Stars 0</span>
+    <span id="lives">Hearts 3</span>
+  </div>
+  <div class="bar-wrap">
+    <div class="bar"><div class="fill" id="fill"></div></div>
+  </div>
+  <div id="road">
+    <div class="overlay" id="start">
+      <h2>Ready, driver?</h2>
+      <p>Steer around big cones and other cars. Grab stars!</p>
+      <button class="go" id="startBtn" type="button">Start</button>
+    </div>
+  </div>
+  <div class="msg" id="msg">Tap Start to race!</div>
+  <div class="controls">
+    <button type="button" id="left">◀ Left</button>
+    <button type="button" id="right">Right ▶</button>
+  </div>
+</div>
+<script>
+const road = document.getElementById("road");
+const fill = document.getElementById("fill");
+const levelEl = document.getElementById("level");
+const scoreEl = document.getElementById("score");
+const livesEl = document.getElementById("lives");
+const msg = document.getElementById("msg");
+const start = document.getElementById("start");
+
+const LEVELS = [
+  { need: 5, speed: 3.2, spawn: 90 },
+  { need: 8, speed: 4.4, spawn: 70 },
+  { need: 12, speed: 5.6, spawn: 55 }
+];
+const TRAFFIC = ["🚙", "🚕", "🚌"];
+
+let level = 1, stars = 0, lives = 3, lane = 1, playing = false;
+let things = [], tick = 0, dashOffset = 0, anim = 0;
+const lanes = [0.18, 0.5, 0.82];
+
+function laneX(i) {
+  return lanes[i] * road.clientWidth - 32;
+}
+
+const car = document.createElement("div");
+car.className = "car";
+car.textContent = "🚗";
+road.appendChild(car);
+
+function placeCar() { car.style.left = laneX(lane) + "px"; }
+function cheer(text) { msg.textContent = text; }
+
+function setHud() {
+  const need = LEVELS[level - 1].need;
+  levelEl.textContent = "Level " + level;
+  scoreEl.textContent = "Stars " + stars;
+  livesEl.textContent = "Hearts " + lives;
+  fill.style.width = Math.min(100, (stars / need) * 100) + "%";
+}
+
+function pickKind() {
+  const r = Math.random();
+  if (r < 0.4) return "star";
+  if (r < 0.7) return "cone";
+  return "traffic";
+}
+
+function spawn(kind) {
+  const el = document.createElement("div");
+  el.className = "thing " + kind;
+  if (kind === "star") el.textContent = "⭐";
+  else if (kind === "cone") el.textContent = "🚧";
+  else el.textContent = TRAFFIC[Math.floor(Math.random() * TRAFFIC.length)];
+  const L = Math.floor(Math.random() * 3);
+  el.style.left = laneX(L) + "px";
+  el.style.top = "-70px";
+  road.appendChild(el);
+  things.push({ el, y: -70, lane: L, kind });
+}
+
+function clearThings() {
+  things.forEach(t => t.el.remove());
+  things = [];
+}
+
+function endOverlay(title, body, btn) {
+  playing = false;
+  cancelAnimationFrame(anim);
+  start.style.display = "flex";
+  start.querySelector("h2").textContent = title;
+  start.querySelector("p").textContent = body;
+  document.getElementById("startBtn").textContent = btn;
+}
+
+function loseLife(why) {
+  lives--;
+  setHud();
+  if (lives <= 0) {
+    cheer("Not quite - try again!");
+    endOverlay("Almost!", "Not quite - try again! You can do it.", "Try again");
+    level = 1; stars = 0; lives = 3;
+    return true;
+  }
+  cheer(why + " Hearts left: " + lives);
+  return false;
+}
+
+function loop() {
+  if (!playing) return;
+  const cfg = LEVELS[level - 1];
+  tick++;
+  dashOffset = (dashOffset + cfg.speed) % 70;
+  document.querySelectorAll(".lane-line").forEach((d, i) => {
+    d.style.top = ((i * 70 + dashOffset) % (road.clientHeight + 40) - 40) + "px";
+  });
+  if (tick % cfg.spawn === 0) spawn(pickKind());
+  const carRect = car.getBoundingClientRect();
+  for (let i = things.length - 1; i >= 0; i--) {
+    const t = things[i];
+    t.y += cfg.speed;
+    t.el.style.top = t.y + "px";
+    t.el.style.left = laneX(t.lane) + "px";
+    const r = t.el.getBoundingClientRect();
+    const pad = t.kind === "star" ? 8 : 14;
+    const hit = r.bottom > carRect.top + pad && r.top < carRect.bottom - pad &&
+                r.right > carRect.left + pad && r.left < carRect.right - pad;
+    if (hit) {
+      t.el.remove();
+      things.splice(i, 1);
+      if (t.kind === "star") {
+        stars++;
+        setHud();
+        cheer("Nice grab! Keep going!");
+        if (stars >= cfg.need) {
+          if (level < 3) {
+            level++;
+            stars = 0;
+            clearThings();
+            setHud();
+            cheer("Level up! You are amazing!");
+          } else {
+            endOverlay("You did it!", "All three levels finished. Great driving!", "Play again");
+            level = 1; stars = 0; lives = 3;
+            return;
+          }
+        }
+      } else if (loseLife(t.kind === "traffic" ? "Bump! Watch those cars." : "Not quite - try again!")) {
+        return;
+      }
+    } else if (t.y > road.clientHeight + 20) {
+      t.el.remove();
+      things.splice(i, 1);
+    }
+  }
+  anim = requestAnimationFrame(loop);
+}
+
+function begin() {
+  start.style.display = "none";
+  clearThings();
+  stars = 0;
+  if (lives <= 0) lives = 3;
+  playing = true;
+  tick = 0;
+  setHud();
+  cheer("Go! Dodge cones and cars!");
+  placeCar();
+  anim = requestAnimationFrame(loop);
+}
+
+function move(dir) {
+  lane = Math.max(0, Math.min(2, lane + dir));
+  placeCar();
+}
+
+document.getElementById("left").addEventListener("click", () => move(-1));
+document.getElementById("right").addEventListener("click", () => move(1));
+document.getElementById("startBtn").addEventListener("click", begin);
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") move(-1);
+  if (e.key === "ArrowRight") move(1);
+});
+
+for (let i = 0; i < 8; i++) {
+  const d = document.createElement("div");
+  d.className = "lane-line";
+  d.style.top = (i * 70) + "px";
+  road.appendChild(d);
+}
+placeCar();
+setHud();
+window.addEventListener("resize", placeCar);
+</script>
+</body>
+</html>
