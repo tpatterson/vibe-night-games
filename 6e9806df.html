@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sunny Road Drive</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    background: #b9e4ff;
+    color: #1b3a4b;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 12px;
+  }
+  .wrap {
+    width: min(520px, 100%);
+    background: #fff8e7;
+    border-radius: 24px;
+    padding: 14px;
+    box-shadow: 0 8px 0 #9fd4f0;
+  }
+  h1 { margin: 4px 0 8px; text-align: center; font-size: 32px; color: #1d6fb8; }
+  .stats { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .stat {
+    flex: 1 1 40%; background: #d7f0ff; border-radius: 16px;
+    text-align: center; padding: 8px 4px; font-size: 20px; font-weight: bold;
+  }
+  .bar-box { background: #d9e8f2; border-radius: 12px; height: 18px; overflow: hidden; margin-bottom: 10px; }
+  .bar { height: 100%; width: 0%; background: #3dbe6a; }
+  canvas {
+    width: 100%; height: auto; display: block;
+    border-radius: 18px; background: #cfefff; border: 6px solid #2d3748;
+  }
+  .msg { min-height: 36px; text-align: center; font-size: 22px; font-weight: bold; margin: 10px 0; color: #2b6cb0; }
+  .hint { text-align: center; font-size: 18px; margin: 0 0 8px; }
+  .pad { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .row { display: flex; gap: 8px; width: 100%; justify-content: center; }
+  button {
+    font-size: 28px; padding: 14px 10px; border: none; border-radius: 18px;
+    background: #3aa0e8; color: #fff; font-weight: bold; cursor: pointer;
+    box-shadow: 0 5px 0 #1d6fb8; min-width: 92px; touch-action: none;
+  }
+  button.held { background: #1d6fb8; transform: translateY(3px); box-shadow: 0 2px 0 #1d6fb8; }
+  button.jump { background: #f4b942; color: #1b3a4b; box-shadow: 0 5px 0 #c48a12; min-width: 180px; }
+  button.jump.held { background: #e09a12; }
+  button.wide { background: #3dbe6a; box-shadow: 0 5px 0 #2f9e56; margin-top: 10px; width: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Sunny Road Drive</h1>
+  <div class="stats">
+    <div class="stat">Stars <span id="score">0</span></div>
+    <div class="stat">Streak <span id="streak">0</span></div>
+    <div class="stat">Time <span id="time">0s</span></div>
+    <div class="stat">Record <span id="record">--</span></div>
+  </div>
+  <div class="bar-box"><div class="bar" id="bar"></div></div>
+  <canvas id="view" width="480" height="420"></canvas>
+  <div class="msg" id="msg">Press Jump to hop over trees!</div>
+  <p class="hint">A and D steer. W speeds up. S slows down. Space jumps.</p>
+  <div class="pad">
+    <button type="button" id="keyW">W</button>
+    <div class="row">
+      <button type="button" id="keyA">A</button>
+      <button type="button" id="keyS">S</button>
+      <button type="button" id="keyD">D</button>
+    </div>
+    <button type="button" class="jump" id="keyJ">Jump</button>
+  </div>
+  <button class="wide" type="button" id="again" hidden>Play again</button>
+</div>
+<script>
+const canvas = document.getElementById("view");
+const ctx = canvas.getContext("2d");
+const W = 480, H = 420;
+const VPX = 240, VPY = 92;
+const scoreEl = document.getElementById("score");
+const streakEl = document.getElementById("streak");
+const timeEl = document.getElementById("time");
+const recordEl = document.getElementById("record");
+const bar = document.getElementById("bar");
+const msg = document.getElementById("msg");
+const again = document.getElementById("again");
+const keys = { a: false, d: false, w: false, s: false, j: false };
+const btns = {
+  w: document.getElementById("keyW"),
+  a: document.getElementById("keyA"),
+  s: document.getElementById("keyS"),
+  d: document.getElementById("keyD"),
+  j: document.getElementById("keyJ")
+};
+
+let x = 0, look = 0, boost = 1;
+let score = 0, streak = 0, goal = 10;
+let playing = true, scroll = 0, spawnWait = 0;
+let things = [];
+let elapsed = 0, shown = 0, record = null;
+let last = 0;
+let stopped = false;
+let hop = 0, hopV = 0, wantJump = false;
+
+function cheer(t) { msg.textContent = t; msg.style.color = "#2f9e56"; }
+function oops(t) { msg.textContent = t; msg.style.color = "#e85d04"; }
+function showTime(n) { return n + "s"; }
+function inAir() { return hop > 0.28; }
+function paintKeys() {
+  btns.w.classList.toggle("held", keys.w);
+  btns.a.classList.toggle("held", keys.a);
+  btns.s.classList.toggle("held", keys.s);
+  btns.d.classList.toggle("held", keys.d);
+  btns.j.classList.toggle("held", keys.j || hop > 0.05);
+}
+function hud() {
+  scoreEl.textContent = score;
+  streakEl.textContent = streak;
+  timeEl.textContent = showTime(shown);
+  recordEl.textContent = record === null ? "--" : showTime(record);
+  bar.style.width = Math.min(100, (score / goal) * 100) + "%";
+}
+
+function cam(depth, lane) {
+  const d = Math.max(0.035, Math.min(1, depth));
+  const t = Math.pow((1 / d - 1) / (1 / 0.035 - 1), 0.85);
+  const y = VPY + t * (372 - VPY);
+  const spread = 18 + t * t * 620;
+  const px = VPX + (lane - look) * spread;
+  const scale = 0.06 + Math.pow(t, 1.65) * 4.4;
+  return { x: px, y, s: scale, t };
+}
+
+function spawn() {
+  const roll = Math.random();
+  const kind = roll < 0.42 ? "star" : roll < 0.72 ? "tree" : "rock";
+  const lane = (Math.random() * 2.2) - 1.1;
+  things.push({ depth: 1, lane, kind, hit: false });
+}
+
+function drawSky() {
+  const g = ctx.createLinearGradient(0, 0, 0, 130);
+  g.addColorStop(0, "#7ec4ff");
+  g.addColorStop(1, "#eef8ff");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, 140);
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.arc(78, 42, 16, 0, 6.28); ctx.fill();
+  ctx.beginPath(); ctx.arc(92, 38, 13, 0, 6.28); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(0, 128); ctx.lineTo(46, 78); ctx.lineTo(98, 128); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(370, 128); ctx.lineTo(430, 64); ctx.lineTo(480, 128); ctx.fill();
+}
+
+function edge(depth, side) { return cam(depth, side * 1.15); }
+
+function drawSlope() {
+  ctx.clearRect(0, 0, W, H);
+  drawSky();
+  ctx.fillStyle = "#d7eefc";
+  ctx.fillRect(0, 118, W, H - 118);
+  const farL = edge(1, -1), farR = edge(1, 1);
+  const nearL = edge(0.05, -1), nearR = edge(0.05, 1);
+  ctx.beginPath();
+  ctx.moveTo(farL.x, farL.y);
+  ctx.lineTo(nearL.x, 400);
+  ctx.lineTo(nearR.x, 400);
+  ctx.lineTo(farR.x, farR.y);
+  ctx.closePath();
+  const snow = ctx.createLinearGradient(0, 90, 0, 400);
+  snow.addColorStop(0, "#f7fbff");
+  snow.addColorStop(1, "#d4ebf8");
+  ctx.fillStyle = snow;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.9)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(farL.x, farL.y);
+  ctx.lineTo(nearL.x, 400);
+  ctx.moveTo(farR.x, farR.y);
+  ctx.lineTo(nearR.x, 400);
+  ctx.stroke();
+  for (let i = 0; i < 14; i++) {
+    const depth = 1 - (((i / 14) + scroll) % 1) * 0.96;
+    const a = cam(depth, -1.05);
+    const b = cam(depth, 1.05);
+    ctx.strokeStyle = i % 2 === 0 ? "rgba(255,255,255,0.85)" : "rgba(180,210,230,0.7)";
+    ctx.lineWidth = 1 + a.t * 4;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+}
+
+function drawThing(t) {
+  const p = cam(t.depth, t.lane);
+  if (p.t < 0.015) return;
+  const s = p.s;
+  if (t.kind === "star") {
+    ctx.font = Math.round(10 + s * 54) + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("⭐", p.x, p.y - 10 * s);
+    return;
+  }
+  if (t.kind === "tree") {
+    const h = 8 + s * 92, w = 5 + s * 36;
+    ctx.fillStyle = "#8d5a2b";
+    ctx.fillRect(p.x - w * 0.16, p.y - h * 0.18, w * 0.32, h * 0.36);
+    ctx.fillStyle = "#217a45";
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y - h);
+    ctx.lineTo(p.x + w, p.y - h * 0.32);
+    ctx.lineTo(p.x - w, p.y - h * 0.32);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#3dbe6a";
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y - h * 0.58);
+    ctx.lineTo(p.x + w * 0.9, p.y);
+    ctx.lineTo(p.x - w * 0.9, p.y);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+  const rw = 6 + s * 48, rh = 4 + s * 22;
+  ctx.fillStyle = "#6b7785";
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, rw, rh, 0, 0, 6.28);
+  ctx.fill();
+  ctx.fillStyle = "#c5d0da";
+  ctx.beginPath();
+  ctx.ellipse(p.x - rw * 0.2, p.y - rh * 0.25, rw * 0.32, rh * 0.28, 0, 0, 6.28);
+  ctx.fill();
+}
+
+function drawCabin() {
+  const lift = hop * 78;
+  ctx.fillStyle = "#1f2937";
+  ctx.fillRect(0, 0, 16, H);
+  ctx.fillRect(W - 16, 0, 16, H);
+  const wx = 240 + look * 22;
+  ctx.fillStyle = "rgba(80,110,140,0.35)";
+  ctx.beginPath();
+  ctx.ellipse(wx, 404, 54 - hop * 18, 10, 0, 0, 6.28);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(0, -lift);
+  ctx.fillStyle = stopped ? "#94a3b8" : "#f97316";
+  ctx.beginPath();
+  ctx.moveTo(40, 332);
+  ctx.lineTo(440, 332);
+  ctx.lineTo(500, 430);
+  ctx.lineTo(-20, 430);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = stopped ? "#64748b" : "#ea580c";
+  ctx.fillRect(90, 356, 300, 14);
+  ctx.fillStyle = "#111827";
+  ctx.beginPath();
+  ctx.ellipse(wx, 396, 48, 16, 0, 0, 6.28);
+  ctx.fill();
+  ctx.fillStyle = "#fef3c7";
+  ctx.font = "bold 16px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(stopped ? "STOP" : (inAir() ? "HOP!" : "SLED"), wx, 400);
+  ctx.restore();
+  if (stopped) {
+    ctx.fillStyle = "rgba(255,255,255,0.82)";
+    ctx.fillRect(70, 150, 340, 70);
+    ctx.fillStyle = "#e85d04";
+    ctx.font = "bold 28px sans-serif";
+    ctx.fillText("Sled stopped!", 240, 194);
+  }
+}
+
+function finish() {
+  playing = false;
+  stopped = false;
+  const beat = record === null || shown < record;
+  if (beat) record = shown;
+  cheer(beat ? "New record! " + showTime(shown) + " is the best!" : "You did it in " + showTime(shown) + "!");
+  hud();
+  again.hidden = false;
+  things = [];
+}
+
+function crash() {
+  playing = false;
+  stopped = true;
+  streak = 0;
+  oops("Not quite - the sled stopped! Try again!");
+  hud();
+  again.hidden = false;
+}
+
+function tryJump() {
+  if (playing && hop <= 0.02 && hopV <= 0) hopV = 2.35;
+}
+
+function step(now) {
+  if (!last) last = now;
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (playing) {
+    if (keys.a && !keys.d) x -= 1.35 * dt;
+    if (keys.d && !keys.a) x += 1.35 * dt;
+    x = Math.max(-1.05, Math.min(1.05, x));
+    const want = keys.w && !keys.s ? 1.7 : keys.s && !keys.w ? 0.62 : 1;
+    boost += (want - boost) * Math.min(1, dt * 7);
+    if (wantJump || keys.j) { tryJump(); wantJump = false; }
+    hopV -= 5.2 * dt;
+    hop += hopV * dt;
+    if (hop <= 0) { hop = 0; hopV = 0; }
+    elapsed += dt;
+    const next = Math.floor(elapsed);
+    if (next !== shown) { shown = next; timeEl.textContent = showTime(shown); }
+  }
+  look += (x - look) * 0.16;
+  paintKeys();
+  if (!playing) {
+    drawSlope();
+    things.slice().sort((a, b) => b.depth - a.depth).forEach(drawThing);
+    drawCabin();
+    return;
+  }
+  const speed = 0.006 * boost;
+  scroll = (scroll + speed * 3) % 1;
+  spawnWait += speed;
+  if (spawnWait > 0.16) { spawnWait = 0; spawn(); }
+  for (let i = things.length - 1; i >= 0; i--) {
+    const t = things[i];
+    t.depth -= speed * (1.1 + score * 0.025);
+    const close = !t.hit && t.depth < 0.18 && t.depth > 0.05 && Math.abs(t.lane - x) < 0.34;
+    if (close) {
+      if (t.kind !== "star" && inAir()) continue;
+      t.hit = true;
+      if (t.kind === "star") {
+        score++; streak++;
+        cheer(inAir() ? "Wow, a star in the air!" : (streak > 2 ? "Wow, nice streak! Keep sliding!" : "Yay! You grabbed a star!"));
+        hud();
+        things.splice(i, 1);
+        if (score >= goal) { finish(); requestAnimationFrame(loop); return; }
+      } else {
+        crash();
+        requestAnimationFrame(loop);
+        return;
+      }
+      continue;
+    }
+    if (t.depth < 0.035) things.splice(i, 1);
+  }
+  drawSlope();
+  things.slice().sort((a, b) => b.depth - a.depth).forEach(drawThing);
+  drawCabin();
+}
+
+function loop(now) { step(now); if (playing) requestAnimationFrame(loop); }
+
+function setKey(k, down) {
+  if (k === "a" || k === "arrowleft") keys.a = down;
+  if (k === "d" || k === "arrowright") keys.d = down;
+  if (k === "w" || k === "arrowup") keys.w = down;
+  if (k === "s" || k === "arrowdown") keys.s = down;
+  if (k === " " || k === "spacebar") {
+    if (down && !keys.j) wantJump = true;
+    keys.j = down;
+  }
+}
+
+function hold(letter, down) {
+  if (letter === "j" && down && !keys.j) wantJump = true;
+  keys[letter] = down;
+  paintKeys();
+}
+["w", "a", "s", "d", "j"].forEach((letter) => {
+  const b = btns[letter];
+  b.onpointerdown = (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); hold(letter, true); };
+  b.onpointerup = () => hold(letter, false);
+  b.onpointercancel = () => hold(letter, false);
+});
+document.addEventListener("keydown", (e) => {
+  const k = e.key.toLowerCase();
+  if ("wasd".indexOf(k) >= 0 || k.indexOf("arrow") === 0 || k === " ") e.preventDefault();
+  setKey(k, true);
+});
+document.addEventListener("keyup", (e) => setKey(e.key.toLowerCase(), false));
+again.onclick = () => {
+  score = 0; streak = 0; x = 0; look = 0; boost = 1; things = []; spawnWait = 0;
+  elapsed = 0; shown = 0; last = 0; stopped = false;
+  hop = 0; hopV = 0; wantJump = false;
+  keys.a = keys.d = keys.w = keys.s = keys.j = false;
+  playing = true; again.hidden = true;
+  msg.textContent = "Press Jump to hop over trees!";
+  msg.style.color = "#2b6cb0";
+  hud();
+  paintKeys();
+  requestAnimationFrame(loop);
+};
+hud();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
