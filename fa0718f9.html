@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scripture Soccer Kick</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Trebuchet MS", "Segoe UI", sans-serif; background: #c8e6a0; color: #14324a; min-height: 100vh; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
+  h1 { margin: 0 0 6px; font-size: 2rem; text-align: center; color: #14532d; }
+  .sub { text-align: center; font-size: 1.15rem; margin: 0 0 12px; color: #166534; font-weight: 700; }
+  .bar { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
+  .pill { border-radius: 999px; padding: 10px 16px; font-size: 1.05rem; font-weight: 700; border: 3px solid #fff; color: #14324a; background: #d9f99d; }
+  .pill.streak { background: #bbf7d0; }
+  .pill.wise { background: #86efac; }
+  .pill.half { background: #a7f3d0; }
+  .pill.hard { background: #4ade80; }
+  .pill.time { background: #ecfccb; }
+  .pill.lvl { background: #f0fdf4; }
+  .track { height: 18px; background: #fff; border-radius: 999px; overflow: hidden; border: 3px solid #166534; margin-bottom: 12px; }
+  .fill { height: 100%; width: 100%; background: linear-gradient(90deg, #166534, #4ade80); }
+  .field { border-radius: 22px; border: 6px solid #14532d; padding: 12px 12px 18px; position: relative; background: #15803d; box-shadow: 0 14px 0 #14532d, inset 0 8px 0 rgba(255,255,255,.12); perspective: 700px; }
+  .field.night { background: #166534; box-shadow: 0 14px 0 #052e16, inset 0 8px 0 rgba(255,255,255,.08); }
+  .crowd { display: flex; justify-content: space-between; gap: 4px; background: #14532d; border-radius: 14px; padding: 6px 8px; margin-bottom: 8px; overflow: hidden; }
+  .fan { font-size: 1.55rem; line-height: 1; display: inline-block; }
+  .crowd.cheer .fan { animation: hop .35s ease infinite alternate; }
+  @keyframes hop { from { transform: translateY(0); } to { transform: translateY(-8px); } }
+  .q { background: #f0fdf4; border: 4px solid #166534; border-radius: 16px; padding: 12px; font-size: 1.1rem; text-align: center; margin-bottom: 10px; }
+  .tag { display: inline-block; margin-bottom: 6px; border-radius: 999px; padding: 4px 10px; font-size: 0.9rem; background: #bbf7d0; }
+  .tag.hot { background: #86efac; }
+  .pitch { transform: rotateX(18deg); transform-origin: center bottom; margin-top: 6px; }
+  .goal { margin: 0 auto; width: 86%; max-width: 460px; height: 168px; border: 8px solid #ecfccb; border-bottom: none; border-radius: 10px 10px 0 0; position: relative; background: repeating-linear-gradient(90deg, rgba(255,255,255,.35) 0 5px, transparent 5px 20px), repeating-linear-gradient(0deg, rgba(255,255,255,.35) 0 5px, transparent 5px 20px), linear-gradient(#4ade80, #166534); box-shadow: 0 10px 0 #052e16; }
+  .keeper { position: absolute; left: 50%; bottom: 8px; z-index: 2; font-size: 52px; line-height: 1; pointer-events: none; transform: translateX(-50%); transition: left .35s ease, transform .35s ease; }
+  .keeper.dive-l { left: 22%; transform: translateX(-50%) rotate(-12deg); }
+  .keeper.dive-r { left: 78%; transform: translateX(-50%) rotate(12deg); }
+  .targets { display: flex; height: 100%; gap: 8px; padding: 10px; position: relative; z-index: 1; }
+  .target { flex: 1; border: none; border-radius: 12px; cursor: pointer; font: inherit; font-size: 0.95rem; font-weight: 800; color: #14324a; box-shadow: 0 5px 0 #14532d; padding: 8px; background: #d9f99d; }
+  .target.c1 { background: #bbf7d0; }
+  .target.c2 { background: #86efac; }
+  .target:disabled { cursor: default; }
+  .target.good { background: #4ade80; }
+  .target.soft { background: #ecfccb; }
+  .lane { height: 150px; position: relative; margin: -8px auto 0; width: 100%; max-width: 520px; background: repeating-linear-gradient(90deg, #22c55e 0 42px, #16a34a 42px 84px); border-radius: 0 0 18px 18px; box-shadow: inset 0 12px 0 rgba(0,0,0,.08), 0 8px 0 #14532d; transform: rotateX(8deg); display: flex; align-items: flex-end; justify-content: center; }
+  .lane:before { content: ""; position: absolute; left: 18%; right: 18%; top: 8px; bottom: 28px; border: 4px solid rgba(255,255,255,.55); border-bottom: none; border-radius: 80px 80px 0 0; }
+  .spot { position: absolute; left: 50%; bottom: 62px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: #f8fafc; box-shadow: 0 0 0 5px rgba(255,255,255,.35), 0 4px 0 rgba(0,0,0,.15); z-index: 1; }
+  .ball { position: absolute; bottom: 78px; font-size: 42px; transition: transform .5s ease, left .5s ease, bottom .5s ease; left: 50%; transform: translateX(-50%); filter: drop-shadow(0 6px 0 rgba(0,0,0,.25)); z-index: 3; }
+  .ball.fly { bottom: 210px; transform: translateX(-50%) scale(.55); }
+  .player { font-size: 72px; line-height: 1; transform: scaleX(-1); filter: drop-shadow(4px 8px 0 rgba(0,0,0,.2)); z-index: 2; }
+  .onfield { display: none; margin-top: 8px; background: #f0fdf4; border: 5px solid #166534; border-radius: 16px; padding: 12px; text-align: center; }
+  .onfield.show { display: block; }
+  .onfield strong { display: block; font-size: 1rem; color: #14532d; }
+  .onfield .ref { display: block; font-size: 1.45rem; margin-top: 4px; font-weight: 800; color: #166534; }
+  .onfield .mean { display: block; font-size: 1.1rem; margin-top: 8px; line-height: 1.35; }
+  .msg { min-height: 28px; text-align: center; font-size: 1.3rem; font-weight: 800; margin: 12px 0 0; color: #14532d; }
+  .start, .done { text-align: center; background: #f0fdf4; border: 5px solid #166534; border-radius: 20px; padding: 22px 16px; }
+  .picks, .books, .levels { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
+  .pick { font-size: 2.4rem; width: 84px; height: 84px; border-radius: 18px; border: 4px solid #fff; cursor: pointer; background: #bbf7d0; box-shadow: 0 6px 0 #166534; }
+  .pick.on { border-color: #14532d; outline: 4px solid #86efac; }
+  .book, .lv { font: inherit; font-size: 1rem; font-weight: 800; padding: 10px 12px; border-radius: 14px; border: 3px solid #fff; cursor: pointer; color: #14324a; background: #d9f99d; box-shadow: 0 4px 0 #166534; }
+  .book.on, .lv.on { outline: 4px solid #14532d; }
+  .lv { min-width: 140px; font-size: 1.05rem; }
+  .big { background: #4ade80; border: none; box-shadow: 0 5px 0 #166534; font: inherit; font-size: 1.4rem; font-weight: 800; border-radius: 16px; padding: 14px 18px; cursor: pointer; color: #14324a; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⚽ Scripture Soccer Kick</h1>
+  <p class="sub">Kick the right LDS scripture mastery finish!</p>
+  <div class="bar">
+    <div class="pill goals" id="scorePill">Goals: 0</div>
+    <div class="pill streak" id="streakPill">Streak: 0</div>
+    <div class="pill wise" id="wisePill">Wisdom: 0</div>
+    <div class="pill lvl" id="lvlPill">Level: 1</div>
+    <div class="pill half" id="halfPill">Half: 1</div>
+    <div class="pill time" id="timePill">Time: 1:00</div>
+  </div>
+  <div class="track"><div class="fill" id="fill"></div></div>
+  <div id="start" class="start">
+    <p style="font-size:1.15rem;margin:0;">Pick a level from 1 to 3, a book, then a player. Level 1 is quite easy. Level 2 is mid. Level 3 is extremely hard, with one easy kick and three hard ones.</p>
+    <div class="levels" id="levels"></div>
+    <div class="books" id="books"></div>
+    <div class="picks" id="picks"></div>
+    <button class="big" id="go">Start kicking</button>
+  </div>
+  <div id="play" class="hidden">
+    <div class="field" id="field">
+      <div class="crowd" id="crowd"></div>
+      <div class="q" id="question"></div>
+      <div class="pitch">
+        <div class="goal">
+          <div class="keeper" id="keeper">🧤</div>
+          <div class="targets" id="choices"></div>
+        </div>
+        <div class="lane">
+          <div class="spot" title="Penalty spot"></div>
+          <div class="ball" id="ball">⚽</div>
+          <div class="player" id="hero">🏃</div>
+        </div>
+      </div>
+      <div class="onfield" id="refbox">
+        <strong>Scripture reference</strong>
+        <span class="ref" id="reftext"></span>
+        <span class="mean" id="meantext"></span>
+      </div>
+    </div>
+    <div class="msg" id="msg"></div>
+  </div>
+  <div id="done" class="done hidden">
+    <p style="font-size:1.5rem;margin:0;" id="final"></p>
+    <button class="big" id="again">Play again</button>
+  </div>
+</div>
+<script>
+var TOTAL = 60, left = TOTAL, score = 0, streak = 0, best = 0, wisdom = 0, qi = 0;
+var firstTry = true, locked = false, timer = null, queue = [];
+var halfAnnounced = false, inHard = false, hero = "🏃", book = "All books", level = 1;
+var SHOW_MS = 3200, thisEasy = true;
+var players = ["🏃", "🧑", "👧", "🦸"];
+var fans = ["👩", "👨", "👧", "👦", "🧑", "👵", "👴", "👩", "👨", "🧒"];
+var bookNames = ["All books", "1 Nephi", "2 Nephi", "Mosiah", "Alma", "Helaman", "3 Nephi", "Ether", "Moroni", "D&C", "Moses", "Matthew", "James", "Articles of Faith"];
+var levelInfo = [
+  [1, "1 Quite easy"],
+  [2, "2 Mid"],
+  [3, "3 Extremely hard"]
+];
+var bank = [
+  ["I will go and do the things which the Lord hath ____.", ["commanded", "hidden", "forgotten"], "commanded", "1 Nephi 3:7", "Nephi trusted God even when the job looked hard.", "1 Nephi"],
+  ["Adam fell that men might be; and men are, that they might have ____.", ["joy", "gold", "rest"], "joy", "2 Nephi 2:25", "God's plan is about joy.", "2 Nephi"],
+  ["Feast upon the words of ____.", ["Christ", "kings", "maps"], "Christ", "2 Nephi 32:3", "Scripture is like a good meal for your heart.", "2 Nephi"],
+  ["When ye are in the service of your fellow beings ye are only in the service of your ____.", ["God", "team", "self"], "God", "Mosiah 2:17", "Helping a person is a way to serve God.", "Mosiah"],
+  ["By small and simple things are ____ things brought to pass.", ["great", "lost", "loud"], "great", "Alma 37:6", "Little prayers and little kindnesses add up.", "Alma"],
+  ["Wickedness never was ____.", ["happiness", "weather", "music"], "happiness", "Alma 41:10", "Doing wrong never makes a happy heart for long.", "Alma"],
+  ["Charity is the pure love of ____.", ["Christ", "sports", "kings"], "Christ", "Moroni 7:47", "Charity means loving people the way Jesus loves them.", "Moroni"],
+  ["The worth of souls is great in the sight of ____.", ["God", "men", "clouds"], "God", "D&C 18:10", "You matter a lot to Heavenly Father.", "D&C"],
+  ["If any of you lack wisdom, let him ask of ____.", ["God", "friends", "books"], "God", "James 1:5", "You can ask God for help, just as Joseph Smith did.", "James"],
+  ["We believe in being honest, true, chaste, benevolent, virtuous, and in doing ____ to all men.", ["good", "tricks", "races"], "good", "Articles of Faith 1:13", "We try to be kind and honest with everyone.", "Articles of Faith"]
+];
+var hard = [
+  ["They are free to choose liberty and eternal life, or to choose captivity and death, according to the captivity and power of the ____.", ["devil", "sea", "king"], "devil", "2 Nephi 2:27", "You get to choose. Good choices bring freedom.", "2 Nephi"],
+  ["If ye have faith ye hope for things which are not seen, which are ____.", ["true", "new", "loud"], "true", "Alma 32:21", "Faith hopes for something real, even before you see it.", "Alma"],
+  ["This life is the time for men to prepare to meet God; yea, behold the day of this life is the day for men to perform their ____.", ["labors", "races", "songs"], "labors", "Alma 34:32", "Today is a good day to practice being kind and faithful.", "Alma"],
+  ["It is upon the rock of our Redeemer, who is Christ, the Son of God, that ye must build your ____.", ["foundation", "castle", "boat"], "foundation", "Helaman 5:12", "When storms come, Jesus can be your strong ground.", "Helaman"],
+  ["What manner of men ought ye to be? Verily I say unto you, even as ____ am.", ["I", "they", "Moses"], "I", "3 Nephi 27:27", "Jesus asks us to try to be like Him.", "3 Nephi"],
+  ["Ask God, the Eternal Father, in the name of Christ, if these things are not true; and if ye shall ask with a sincere heart, with real intent, having faith in Christ, he will manifest the truth of it unto you, by the power of the Holy ____.", ["Ghost", "city", "king"], "Ghost", "Moroni 10:4", "You can pray and ask if the Book of Mormon is true.", "Moroni"],
+  ["I give unto men weakness that they may be humble; and my grace is sufficient for all men that humble themselves before me, and have faith in me, then will I make weak things become ____ unto them.", ["strong", "famous", "silent"], "strong", "Ether 12:27", "God can turn a weak spot into a strength.", "Ether"],
+  ["For behold, this is my work and my glory—to bring to pass the immortality and eternal life of ____.", ["man", "stars", "angels"], "man", "Moses 1:39", "God's great work is helping His children live with Him.", "Moses"]
+];
+var extreme = [
+  ["I, Nephi, having been born of goodly parents, therefore I was taught somewhat in all the learning of my father; and having seen many afflictions in the course of my days, nevertheless, having been highly favored of the Lord in all my days; yea, having had a great knowledge of the goodness and the mysteries of God, therefore I make a ____ of my proceedings in my days.", ["record", "song", "map"], "record", "1 Nephi 1:1", "Nephi wrote so his family could remember God's goodness.", "1 Nephi"],
+  ["Adam fell that men might be; and men are, that they might have joy. And the Messiah cometh in the fulness of time, that he may redeem the children of men from the ____.", ["fall", "rain", "road"], "fall", "2 Nephi 2:25-26", "Jesus came to help us after the Fall.", "2 Nephi"],
+  ["And behold, I tell you these things that ye may learn wisdom; that ye may learn that when ye are in the service of your fellow beings ye are only in the service of your ____.", ["God", "team", "self"], "God", "Mosiah 2:17", "Kind service is sacred.", "Mosiah"],
+  ["And now, my son, I would that ye should understand that these things are not without a shadow; for as our fathers were slothful to give heed to this compass, they did not prosper; even so it is with things which are ____.", ["spiritual", "painted", "hidden"], "spiritual", "Alma 37:43", "If we ignore God's guidance, life gets harder.", "Alma"],
+  ["And now, my sons, remember, remember that it is upon the rock of our Redeemer, who is Christ, the Son of God, that ye must build your foundation; that when the devil shall send forth his mighty winds, yea, his shafts in the whirlwind, yea, when all his hail and his mighty storm shall beat upon you, it shall have no power over you to drag you down to the gulf of misery and endless wo, because of the rock upon which ye are ____.", ["built", "lost", "seated"], "built", "Helaman 5:12", "Build your life on Jesus and storms cannot drag you down.", "Helaman"],
+  ["Therefore, what manner of men ought ye to be? Verily I say unto you, even as I am. And now I go unto the ____.", ["Father", "market", "river"], "Father", "3 Nephi 27:27-28", "Jesus wants us to become like Him.", "3 Nephi"],
+  ["And if men come unto me I will show unto them their weakness. I give unto men weakness that they may be humble; and my grace is sufficient for all men that humble themselves before me; for if they humble themselves before me, and have faith in me, then will I make weak things become strong unto ____.", ["them", "kings", "cities"], "them", "Ether 12:27", "Humility plus faith invites God's strength.", "Ether"],
+  ["Wherefore, I would exhort you that ye would ask God, the Eternal Father, in the name of Christ, if these things are not true; and if ye shall ask with a sincere heart, with real intent, having faith in Christ, he will manifest the truth of it unto you, by the power of the Holy Ghost. And by the power of the Holy Ghost ye may know the truth of all ____.", ["things", "maps", "games"], "things", "Moroni 10:4-5", "The Spirit can help you know what is true.", "Moroni"],
+  ["Remember the worth of souls is great in the sight of God; for, behold, the Lord your Redeemer suffered death in the flesh; wherefore he suffered the pain of all men, that all men might repent and come unto ____.", ["him", "town", "camp"], "him", "D&C 18:10-11", "Jesus suffered so every person can repent and come to Him.", "D&C"],
+  ["Behold, I am God; Man of Holiness is my name; Man of Counsel is my name; and Endless and Eternal is my name, also. Wherefore, I can stretch forth mine hands and hold all the creations which I have made; and mine eye can pierce them also, and among all the workmanship of mine hands there has not been so great wickedness as among thy ____.", ["brethren", "sheep", "stones"], "brethren", "Moses 7:35-36", "God sees all His children and still calls them His.", "Moses"],
+  ["Ye are the light of the world. A city that is set on an hill cannot be hid. Neither do men light a candle, and put it under a bushel, but on a candlestick; and it giveth light unto all that are in the house. Let your light so shine before men, that they may see your good works, and glorify your Father which is in ____.", ["heaven", "town", "Zion only"], "heaven", "Matthew 5:14-16", "Your good example can point people toward God.", "Matthew"],
+  ["If any of you lack wisdom, let him ask of God, that giveth to all men liberally, and upbraideth not; and it shall be given him. But let him ask in faith, nothing wavering. For he that wavereth is like a wave of the ____.", ["sea", "song", "field"], "sea", "James 1:5-6", "Ask God with a steady, trusting heart.", "James"]
+];
+function beep(kind) {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination); g.gain.value = 0.08; o.type = "sine";
+    o.frequency.value = kind === "goal" ? 660 : kind === "half" ? 520 : 260;
+    o.start();
+    if (kind === "goal") o.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+    o.stop(ctx.currentTime + 0.28);
+  } catch (e) {}
+}
+function shuffle(a) {
+  var b = a.slice();
+  for (var i = b.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = b[i]; b[i] = b[j]; b[j] = t; }
+  return b;
+}
+function filterBook(list) {
+  if (book === "All books") return list.slice();
+  var f = list.filter(function (item) { return item[5] === book; });
+  return f.length ? f : list.slice();
+}
+function buildCrowd() {
+  var box = document.getElementById("crowd"); box.innerHTML = "";
+  fans.forEach(function (f, i) {
+    var s = document.createElement("span");
+    s.className = "fan"; s.style.animationDelay = (i * 0.05) + "s"; s.textContent = f;
+    box.appendChild(s);
+  });
+}
+function cheer() {
+  var box = document.getElementById("crowd");
+  box.className = "crowd cheer";
+  setTimeout(function () { box.className = "crowd"; }, 1200);
+}
+function resetKeeper() { document.getElementById("keeper").className = "keeper"; }
+function diveKeeper(idx, saved) {
+  document.getElementById("keeper").className = "keeper " + (idx === 0 ? "dive-l" : idx === 2 ? "dive-r" : "");
+  if (!saved) setTimeout(resetKeeper, 500);
+}
+function hideRef() {
+  document.getElementById("refbox").className = "onfield";
+  document.getElementById("reftext").textContent = "";
+  document.getElementById("meantext").textContent = "";
+}
+function hardList() { return filterBook(level === 3 ? extreme : hard); }
+function buildQueue() {
+  var easy = filterBook(bank), tough = hardList();
+  var ei = shuffle(easy.map(function (_, i) { return i; }));
+  var hi = shuffle(tough.map(function (_, i) { return i; }));
+  queue = [];
+  var e = 0, h = 0, n;
+  if (level === 1) {
+    for (n = 0; n < ei.length; n++) queue.push({ easy: true, item: easy[ei[n]] });
+    return;
+  }
+  for (n = 0; n < 12; n++) {
+    if (n % 4 === 0) queue.push({ easy: true, item: easy[ei[e++ % ei.length]] });
+    else queue.push({ easy: false, item: tough[hi[h++ % hi.length]] });
+  }
+}
+function showQ() {
+  var slot = queue[qi % queue.length];
+  var item = slot.item;
+  thisEasy = slot.easy || level === 1;
+  inHard = left <= 30;
+  document.getElementById("field").className = inHard ? "field night" : "field";
+  document.getElementById("halfPill").textContent = inHard ? "Half: 2" : "Half: 1";
+  document.getElementById("halfPill").className = inHard ? "pill hard" : "pill half";
+  document.getElementById("lvlPill").textContent = "Level: " + level;
+  var tag = thisEasy ? "Quite easy" : (level === 2 ? "Mid" : "Extremely hard");
+  document.getElementById("question").innerHTML = "<span class='tag" + (thisEasy ? "" : " hot") + "'>" + tag + "</span><br>" + item[0];
+  var box = document.getElementById("choices"); box.innerHTML = "";
+  shuffle(item[1]).forEach(function (text, idx) {
+    var b = document.createElement("button");
+    b.className = "target c" + idx; b.textContent = text;
+    b.onclick = function () { pick(text, b, item, idx); };
+    box.appendChild(b);
+  });
+  document.getElementById("msg").textContent = book + " · level " + level + (thisEasy ? " · easy kick" : " · big kick");
+  hideRef();
+  document.getElementById("ball").className = "ball";
+  document.getElementById("ball").style.left = "50%";
+  resetKeeper(); firstTry = true; locked = false;
+}
+function pick(text, btn, item, idx) {
+  if (locked) return;
+  var ball = document.getElementById("ball");
+  var shift = idx === 0 ? -90 : idx === 2 ? 90 : 0;
+  ball.style.left = "calc(50% + " + shift + "px)";
+  ball.className = "ball fly";
+  if (text === item[2]) {
+    locked = true; btn.className = "target good";
+    diveKeeper(idx === 0 ? 2 : idx === 2 ? 0 : 1, false);
+    beep("goal"); cheer();
+    var pts = thisEasy ? 1 : (level === 3 ? 3 : 2);
+    if (inHard) pts *= 2;
+    if (firstTry) { score += pts; streak++; wisdom += pts; if (streak > best) best = streak; }
+    document.getElementById("scorePill").textContent = "Goals: " + score;
+    document.getElementById("streakPill").textContent = "Streak: " + streak;
+    document.getElementById("wisePill").textContent = "Wisdom: " + wisdom;
+    document.getElementById("msg").textContent = thisEasy ? "Goal! Nice easy kick!" : "Wow, that hard one went in!";
+    document.getElementById("reftext").textContent = item[3];
+    document.getElementById("meantext").textContent = item[4];
+    document.getElementById("refbox").className = "onfield show";
+    setTimeout(function () { qi++; if (left <= 0) return finish(); showQ(); }, SHOW_MS);
+  } else {
+    firstTry = false; streak = 0;
+    document.getElementById("streakPill").textContent = "Streak: 0";
+    btn.className = "target soft"; btn.disabled = true;
+    diveKeeper(idx, true); beep("miss");
+    document.getElementById("msg").textContent = "Not quite - try again!";
+    hideRef();
+    setTimeout(function () { ball.className = "ball"; ball.style.left = "50%"; }, 400);
+  }
+}
+function tick() {
+  left--; if (left < 0) left = 0;
+  var m = Math.floor(left / 60), s = left % 60;
+  document.getElementById("timePill").textContent = "Time: " + m + ":" + (s < 10 ? "0" : "") + s;
+  document.getElementById("fill").style.width = (left / TOTAL * 100) + "%";
+  if (left === 30 && !halfAnnounced) { halfAnnounced = true; beep("half"); document.getElementById("msg").textContent = "Second half! Goals count double!"; }
+  if (left <= 0) finish();
+}
+function finish() {
+  clearInterval(timer);
+  document.getElementById("play").className = "hidden";
+  document.getElementById("done").className = "done";
+  document.getElementById("final").textContent = "Full time, level " + level + " in " + book + "! " + score + " goal points, wisdom " + wisdom + ", best streak " + best + ".";
+}
+function start() {
+  score = 0; streak = 0; best = 0; wisdom = 0; qi = 0; left = TOTAL; halfAnnounced = false; inHard = false;
+  buildQueue();
+  document.getElementById("hero").textContent = hero;
+  document.getElementById("scorePill").textContent = "Goals: 0";
+  document.getElementById("streakPill").textContent = "Streak: 0";
+  document.getElementById("wisePill").textContent = "Wisdom: 0";
+  document.getElementById("lvlPill").textContent = "Level: " + level;
+  document.getElementById("halfPill").textContent = "Half: 1";
+  document.getElementById("halfPill").className = "pill half";
+  document.getElementById("start").className = "hidden";
+  document.getElementById("done").className = "hidden";
+  document.getElementById("play").className = "";
+  buildCrowd(); showQ(); clearInterval(timer); tick(); timer = setInterval(tick, 1000);
+}
+var picks = document.getElementById("picks");
+players.forEach(function (p) {
+  var b = document.createElement("button");
+  b.className = "pick" + (p === hero ? " on" : ""); b.textContent = p;
+  b.onclick = function () { hero = p; Array.prototype.forEach.call(picks.children, function (c) { c.className = "pick"; }); b.className = "pick on"; };
+  picks.appendChild(b);
+});
+var books = document.getElementById("books");
+bookNames.forEach(function (name) {
+  var b = document.createElement("button");
+  b.className = "book" + (name === book ? " on" : ""); b.textContent = name;
+  b.onclick = function () { book = name; Array.prototype.forEach.call(books.children, function (c) { c.className = "book"; }); b.className = "book on"; };
+  books.appendChild(b);
+});
+var levels = document.getElementById("levels");
+levelInfo.forEach(function (info) {
+  var b = document.createElement("button");
+  b.className = "lv" + (info[0] === level ? " on" : "");
+  b.textContent = info[1];
+  b.onclick = function () {
+    level = info[0];
+    Array.prototype.forEach.call(levels.children, function (c) { c.className = "lv"; });
+    b.className = "lv on";
+  };
+  levels.appendChild(b);
+});
+document.getElementById("go").onclick = start;
+document.getElementById("again").onclick = function () {
+  document.getElementById("done").className = "hidden";
+  document.getElementById("start").className = "start";
+};
+</script>
+</body>
+</html>
